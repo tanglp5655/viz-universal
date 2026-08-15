@@ -123,8 +123,14 @@ LABEL_OF = {'c': '科目/产品', 'src': '来源', 'signer': '签单人',
 
 # ---------- 真实地图（合规 GeoJSON + ECharts，离线内嵌） ----------
 GEO_PROV = os.path.join(BASE, 'assets', 'china_province.json')
+GEO_WORLD = os.path.join(BASE, 'assets', 'world_countries.json')
 GEO_ECHARTS = os.path.join(BASE, 'assets', 'echarts.min.js')
 GEO_API = 'https://geo.datav.aliyun.com/areas_v3/bound/{adcode}_full.json'
+COUNTRY_MAP = {}
+_country_map_file = os.path.join(BASE, 'references', 'country_map.json')
+if os.path.exists(_country_map_file):
+    with open(_country_map_file, encoding='utf-8') as _f:
+        COUNTRY_MAP = json.load(_f)
 
 
 def _norm_geo(n):
@@ -146,10 +152,15 @@ def _fetch_geo(adcode, timeout=25):
 
 
 def build_geo(rows, meta):
-    """有省/市/县分层时，构建真实地图所需的树 + 内嵌 GeoJSON。无网时降级。"""
+    """有省/市/县分层时，构建真实地图所需的树 + 内嵌 GeoJSON。无网时降级。
+    regionKeys 首列为 country 时自动切世界地图（中文国家名经 country_map 映射为英文）。"""
     rk = meta.get('regionKeys') or []
-    if not rk or 'prov' not in rk:
+    if not rk:
         return None
+    is_world = (rk[0] == 'country')
+    if not is_world and 'prov' not in rk:
+        return None
+
     root = {}
     for r in rows:
         a = r.get('a', 0)
@@ -163,6 +174,34 @@ def build_geo(rows, meta):
             node[nm]['a'] += a
             node[nm]['c'] += 1
             node = node[nm]['children']
+
+    if is_world:
+        # ---------- 世界地图（国家级，离线内嵌） ----------
+        try:
+            with open(GEO_WORLD, encoding='utf-8') as fp:
+                world_geo = json.load(fp)
+        except Exception as e:
+            print('  ⚠ 缺少世界边界文件 assets/world_countries.json：%s' % e)
+            return None
+        geoJSONs = {'world': world_geo}
+        alias = {}
+        for f in world_geo['features']:
+            nm = (f.get('properties') or {}).get('name')
+            if nm:
+                alias[nm] = nm
+        # 数据里的国家名（可能中文）→ 映射为 GeoJSON 英文名；英文原样保留
+        merged = {}
+        for nm, node in root.items():
+            key = COUNTRY_MAP.get(nm, nm)
+            merged[key] = node
+        # 只保留世界地图上存在的国家
+        keep = {nm: node for nm, node in merged.items() if nm in alias}
+        if not keep and root:
+            print('  ⚠ 数据中的国家名未匹配到世界地图（参考 references/country_map.json 中英映射）')
+        return {'root': {'a': 0, 'c': 0, 'children': keep}, 'geoJSONs': geoJSONs,
+                'rk': ['country'], 'world': True}
+
+    # ---------- 中国地图（省→市→区钻取） ----------
     try:
         with open(GEO_PROV, encoding='utf-8') as fp:
             prov_geo = json.load(fp)

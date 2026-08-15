@@ -451,6 +451,44 @@ def main():
         else:
             check("分级: 默认免密生成", False)
 
+    # ------------------------------------------------------------------
+    # 世界地图模式（含"国家"列 → regionKeys=['country'] → 世界地图）
+    # ------------------------------------------------------------------
+    world_rows = [
+        {"报名日期": "2026-05-01", "客户名称": "甲公司", "金额": 50000, "国家": "中国", "支付方式": "对公转账"},
+        {"报名日期": "2026-05-02", "客户名称": "乙公司", "金额": 30000, "国家": "美国", "支付方式": "电汇"},
+        {"报名日期": "2026-06-03", "客户名称": "丙公司", "金额": 20000, "国家": "日本", "支付方式": "微信"},
+        {"报名日期": "2026-06-04", "客户名称": "丁公司", "金额": 15000, "国家": "德国", "支付方式": "支付宝"},
+        {"报名日期": "2026-07-05", "客户名称": "戊公司", "金额": 12000, "国家": "英国", "支付方式": "银行卡"},
+        {"报名日期": "2026-07-06", "客户名称": "己公司", "金额": 8000, "国家": "新加坡", "支付方式": "对公转账"},
+    ]
+    w_raw = os.path.join(out_dir, "_w_raw.json")
+    with open(w_raw, "w", encoding="utf-8") as fp:
+        json.dump(world_rows, fp, ensure_ascii=False)
+    w_masked = os.path.join(out_dir, "_w_masked.json")
+    p = run_py(ANON, ["-i", w_raw, "-o", w_masked, "--level", "L2"])
+    check("世界地图: anonymize 执行", p.returncode == 0)
+    if p.returncode == 0:
+        wd = json.load(open(w_masked, encoding="utf-8"))
+        check("世界地图: regionKeys=['country']", wd["meta"].get("regionKeys") == ["country"],
+              str(wd["meta"].get("regionKeys")))
+        w_html = os.path.join(out_dir, "_w.html")
+        p = run_py(BUILD, ["-i", w_masked, "-o", w_html, "--no-lock", "--title", "世界地图测试"])
+        check("世界地图: 生成看板", p.returncode == 0)
+        if p.returncode == 0:
+            wh = open(w_html, encoding="utf-8").read()
+            m = re.search(r'"geo": (\{.*?\}), "schema"', wh)
+            geo = json.loads(m.group(1)) if m else None
+            check("世界地图: 世界标志", bool(geo and geo.get("world")))
+            check("世界地图: 内嵌世界 GeoJSON",
+                  bool(geo and geo.get("geoJSONs", {}).get("world", {}).get("features", [])))
+            check("世界地图: 中文国家名已映射英文",
+                  bool(geo and geo.get("root", {}).get("children", {}).get("China"))
+                  and "United States" in geo["root"]["children"])
+            check("世界地图: 聚合金额一致",
+                  bool(geo and sum(c["a"] for c in geo["root"]["children"].values())
+                       == sum(r["金额"] for r in world_rows)))
+
     # 汇总
     print("\n" + "=" * 64)
     passed = sum(1 for _, c, _ in RESULTS if c)

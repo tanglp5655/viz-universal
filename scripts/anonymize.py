@@ -61,6 +61,8 @@ COLUMN_HINTS = [
     ('county',  'region',   ['县', '县级', 'county']),
     ('dist',    'region',   ['区', '区县', '城区', '行政区', '街道', '乡镇', 'district']),
     ('region',  'region',   ['地区', '区域', '省市区', '省市区县', '归属地']),
+    # 国家（用于世界地图；值非 PII，原样保留，中文名自动映射为英文）
+    ('country', 'region',   ['国家', '国别', 'country', 'nation']),
     # 人物画像
     ('gender',  'demographic', ['性别', '男女', 'gender', 'sex']),
     ('age',     'demographic', ['年龄', '岁', '年纪', '龄', 'age']),
@@ -77,6 +79,7 @@ DEFAULT_LABELS = {
     'd': '日期', 'a': '金额', 'se': '数量', 'n': '客户',
     'signer': '签单人', 'teacher': '服务人员', 'c': '项目',
     'src': '来源', 'p': '支付方式', 'campus': '门店/部门',
+    'country': '国家',
 }
 
 # 行业预置目录
@@ -417,12 +420,15 @@ def build(records, level='L2', scale=1.0, date_shift=0, mapping=None,
 
     # 5. 元信息：地区层级 / 性别 / 年龄（供看板做钻取与人物画像）
     meta = {'regionKeys': [], 'genderKey': None, 'ageKey': None}
-    order = ['prov', 'city', 'county', 'dist']
-    rk = [k for k in order if any(k in r for r in out)]
-    if rk:
-        meta['regionKeys'] = rk
-    elif any('region' in r for r in out):
-        meta['regionKeys'] = ['region']
+    if any('country' in r for r in out):
+        meta['regionKeys'] = ['country']          # 含国家列 → 世界地图模式
+    else:
+        order = ['prov', 'city', 'county', 'dist']
+        rk = [k for k in order if any(k in r for r in out)]
+        if rk:
+            meta['regionKeys'] = rk
+        elif any('region' in r for r in out):
+            meta['regionKeys'] = ['region']
     if any('gender' in r for r in out):
         meta['genderKey'] = 'gender'
     if any('age' in r for r in out):

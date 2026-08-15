@@ -929,7 +929,7 @@ function init(){
   GEO = (D && D.geo) ? D.geo : null;
   var eg=document.getElementById('extraGrid'), egh='';
   var hasR = regionKeys().length>0;
-  var geoReady = !!(GEO && GEO.root && GEO.geoJSONs && GEO.geoJSONs['100000']);
+  var geoReady = !!(GEO && GEO.root && GEO.geoJSONs && (GEO.geoJSONs['100000'] || GEO.geoJSONs['world']));
   GEOREADY = geoReady;
   var hasG = !!(D.meta && D.meta.genderKey), hasA = !!(D.meta && D.meta.ageKey);
   var SCH = (D && D.schema) ? D.schema : null;
@@ -946,7 +946,7 @@ function init(){
   var PANELS = (SCH && Array.isArray(SCH.panels)) ? SCH.panels : ['geo','gender','age','table'];
   PANELS.forEach(function(p){
     if(p==='geo'){
-      if(geoReady) egh += '<div class="card" id="geoMapCard" style="margin-bottom:12px"><div class="ct"><span>'+LB('geo','地区分布')+' · 真实地图</span><span class="hint" id="geoHint">颜色越深=金额越高 · 点击区域下钻并联动筛选其它面板</span></div>'+
+      if(geoReady) egh += '<div class="card" id="geoMapCard" style="margin-bottom:12px"><div class="ct"><span>'+LB('geo','地区分布')+' · '+(GEO.world?'世界':'真实')+'地图</span><span class="hint" id="geoHint">'+(GEO.world?'颜色越深=金额越高 · 点击国家联动筛选其它面板':'颜色越深=金额越高 · 点击区域下钻并联动筛选其它面板')+'</span></div>'+
         '<div class="chips" id="geoCrumb" style="margin-top:0;margin-bottom:10px"></div>'+
         '<div class="cv" id="cvbox_geo" style="height:460px;min-height:360px"><div id="geoMain" style="width:100%;height:100%"></div></div>'+
         '<div class="legend" id="geoLegend"></div></div>';
@@ -1244,6 +1244,14 @@ function normGeoName(n){ if(!n) return n;
 function buildGeoAlias(){
   geoAlias = {}; geoNameAlias = {};
   if(!GEO) return;
+  if(GEO.world){
+    // 世界地图：无 adcode，name 即 key
+    (GEO.geoJSONs['world'].features||[]).forEach(function(f){
+      var nm=f.properties && f.properties.name;
+      if(nm){ geoAlias[nm]=nm; geoNameAlias[nm]=nm; }
+    });
+    return;
+  }
   Object.keys(GEO.geoJSONs).forEach(function(k){
     (GEO.geoJSONs[k].features||[]).forEach(function(f){
       var p=f.properties||{}, nm=p.name, ad=p.adcode;
@@ -1302,7 +1310,7 @@ function renderGeo(key, node, crumbs){
   geoChart.on('click', function(p){ onGeoClick(p.name); });
   // 面包屑
   var crumb=document.getElementById('geoCrumb');
-  var h='<span class="rc'+(crumbs.length===0?' cur':'')+'" data-l="-1">全国</span>';
+  var h='<span class="rc'+(crumbs.length===0?' cur':'')+'" data-l="-1">'+(GEO.world?'全球':'全国')+'</span>';
   crumbs.forEach(function(c,i){ h+=' <span class="rsep">›</span> <span class="rc'+(i===crumbs.length-1?' cur':'')+'" data-l="'+i+'">'+c+'</span>'; });
   crumb.innerHTML=h;
   crumb.querySelectorAll('.rc').forEach(function(el){ el.onclick=function(){
@@ -1320,7 +1328,14 @@ function onGeoClick(name){
   var item = geoData.filter(function(d){return d.name===name;})[0];
   if(!item) return;
   var child = geoCur.children && geoCur.children[item.orig];
-  if(!child) return;
+  if(!child){
+    if(GEO.world){   // 世界地图：点击国家 = 筛选该国家（无钻取，全盘联动）
+      REGIONFILTER = {};
+      REGIONFILTER[GEO.rk[0]] = item.orig;
+      geoGoto([]); render();
+    }
+    return;
+  }
   var path = geoCrumbs.concat([item.orig]);
   REGIONFILTER={}; for(var i=0;i<path.length;i++) REGIONFILTER[GEO.rk[i]]=path[i];
   geoGoto(path); render();
@@ -1335,7 +1350,8 @@ function geoGoto(path){
   }
   if(!ok){ node=GEO.root; geoCrumbs=[]; }
   geoCur = node;
-  if(geoCrumbs.length===0) geoCurKey='100000';
+  if(GEO.world){ geoCurKey = 'world'; }              // 世界地图：固定 world，无 adcode 层级
+  else if(geoCrumbs.length===0) geoCurKey='100000';
   else { var nm=geoCrumbs[geoCrumbs.length-1]; geoCurKey = geoAlias[normGeoName(nm)]||geoAlias[nm]||'100000'; }
   // 渲染统一交给 render()，避免重复 setOption
 }
