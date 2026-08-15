@@ -1,6 +1,6 @@
 # viz-universal
 
-[![CI](https://github.com/tanglp5655/viz-universal/actions/workflows/ci.yml/badge.svg)](https://github.com/tanglp5655/viz-universal/actions/workflows/ci.yml)
+[![CI](https://img.shields.io/github/actions/workflow/status/tanglp5655/viz-universal/ci.yml)](https://github.com/tanglp5655/viz-universal/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/github/license/tanglp5655/viz-universal)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)](pyproject.toml)
 [![GitHub stars](https://img.shields.io/github/stars/tanglp5655/viz-universal)](https://github.com/tanglp5655/viz-universal)
