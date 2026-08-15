@@ -1301,8 +1301,7 @@ function renderGeo(key, node, crumbs){
   var max = Math.max.apply(null, vals.concat([1]));
   geoChart.setOption({
     tooltip:{trigger:'item', confine:true,
-      formatter:function(p){ var d=p.data; if(!d||d.value==null) return p.name+'<br>无数据';
-        return p.name+'<br>金额 '+money(d.value)+'（'+shortMoney(d.value)+'）<br>笔数 '+(d.cnt||0); }},
+      formatter:function(p){ var d=p.data; var f=(d&&d.properties)||{}; var full=f._fullName&&f._fullName!==p.name?"（"+f._fullName+"）":""; if(!d||d.value==null) return p.name+full+"<br>无数据"; return p.name+full+"<br>金额 "+money(d.value)+"（"+shortMoney(d.value)+"）<br>笔数 "+(d.cnt||0); }},
     visualMap:{ min:0, max:max, left:14, bottom:18, itemHeight:100, text:['高','低'], textStyle:{color:'#8899b0',fontSize:10},
       inRange:{color:['#0e2a3a','#1d5b7a','#2a9db5','#4fd0c0','#9be7a0','#f2d65c','#e8767a']}, calculable:true },
     series:[{ type:'map', map:'GEO', roam:true, zoom:1.15,

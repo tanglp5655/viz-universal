@@ -34,6 +34,8 @@ from datetime import datetime
 import urllib.request
 import ssl
 import re
+import io, zipfile
+import os
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from crypto_util import encrypt_text, DEFAULT_ITERATIONS  # noqa: E402
@@ -121,16 +123,83 @@ LABEL_OF = {'c': '科目/产品', 'src': '来源', 'signer': '签单人',
             'teacher': '服务人员', 'p': '支付方式', 'campus': '校区'}
 
 
+_SUB_GEO_FAILS = []   # 收集加载失败的国家，便于 main() 汇总提示用户手动补
+
+def fetch_sub_geo(en, iso3=None):
+    """按需加载国家内州/省/县地图：缓存优先→geoBoundaries API。受限网络下 API 不可达则失败。"""
+    cache = os.path.join(COUNTRY_SUB_DIR, en + '.json')
+    if os.path.exists(cache):
+        try:
+            with open(cache, encoding='utf-8') as f: return json.load(f)
+        except Exception: pass
+    iso3 = iso3 or EN_ISO3.get(en)
+    if not iso3:
+        _SUB_GEO_FAILS.append((en, 'ISO3 缺失'))
+        return None
+    try:
+        api_url = GB_API.format(ISO3=iso3)
+        req = urllib.request.Request(api_url, headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req, timeout=15) as r:
+            meta = json.loads(r.read().decode('utf-8'))
+    except Exception:
+        _SUB_GEO_FAILS.append((en, 'API/网络不可达'))
+        return None
+    for url_key in ('simplifiedGeometryGeoJSON','gjDownloadURL','staticDownloadLink'):
+        geo_url = meta.get(url_key)
+        if not geo_url: continue
+        try:
+            if geo_url.endswith('.zip'):
+                req2 = urllib.request.Request(geo_url, headers={'User-Agent':'Mozilla/5.0'})
+                with urllib.request.urlopen(req2, timeout=25) as r2:
+                    z = zipfile.ZipFile(io.BytesIO(r2.read()))
+                    inner = [n for n in z.namelist() if n.endswith('.geojson')]
+                    if not inner: continue
+                    data = json.loads(z.read(inner[0]).decode('utf-8'))
+            else:
+                req2 = urllib.request.Request(geo_url, headers={'User-Agent':'Mozilla/5.0'})
+                with urllib.request.urlopen(req2, timeout=25) as r2:
+                    text = r2.read().decode('utf-8', errors='ignore')
+                if 'git-lfs' in text[:80]: continue
+                data = json.loads(text)
+        except Exception:
+            continue
+        os.makedirs(COUNTRY_SUB_DIR, exist_ok=True)
+        with open(cache, 'w', encoding='utf-8') as f:
+            json.dump(data, f, ensure_ascii=False)
+        return data
+    _SUB_GEO_FAILS.append((en, 'API 数据未取得'))
+    return None
+
+
 # ---------- 真实地图（合规 GeoJSON + ECharts，离线内嵌） ----------
 GEO_PROV = os.path.join(BASE, 'assets', 'china_province.json')
 GEO_WORLD = os.path.join(BASE, 'assets', 'world_countries.json')
+COUNTRY_SUB_DIR = os.path.join(BASE, 'assets', 'countries')   # 国家内州/省/县地图（<英文国家名>.json）
 GEO_ECHARTS = os.path.join(BASE, 'assets', 'echarts.min.js')
 GEO_API = 'https://geo.datav.aliyun.com/areas_v3/bound/{adcode}_full.json'
+GB_API = 'https://www.geoboundaries.org/api/current/gbOpen/{ISO3}/ADM1/'  # 受限网络下不可达
 COUNTRY_MAP = {}
 _country_map_file = os.path.join(BASE, 'references', 'country_map.json')
 if os.path.exists(_country_map_file):
     with open(_country_map_file, encoding='utf-8') as _f:
         COUNTRY_MAP = json.load(_f)
+# 英文国家名 → ISO3（geoBoundaries API 用），覆盖常用 ~80 国
+EN_ISO3 = {
+    'China':'CHN','United States of America':'USA','United States':'USA','Japan':'JPN',
+    'South Korea':'KOR','Korea':'KOR','India':'IND','Singapore':'SGP','Germany':'DEU',
+    'United Kingdom':'GBR','France':'FRA','Italy':'ITA','Spain':'ESP','Netherlands':'NLD',
+    'Russia':'RUS','Canada':'CAN','Australia':'AUS','Brazil':'BRA','Mexico':'MEX',
+    'Indonesia':'IDN','Thailand':'THA','Vietnam':'VNM','Malaysia':'MYS','Philippines':'PHL',
+    'Saudi Arabia':'SAU','United Arab Emirates':'ARE','Turkey':'TUR','Egypt':'EGY',
+    'Switzerland':'CHE','Sweden':'SWE','Norway':'NOR','Denmark':'DNK','Finland':'FIN',
+    'Poland':'POL','Czech Rep.':'CZE','Austria':'AUT','Belgium':'BEL','Portugal':'PRT',
+    'Greece':'GRC','Ireland':'IRL','Hungary':'HUN','Romania':'ROU','NewNew Zealand':'NZL',
+    'South Africa':'ZAF','Argentina':'ARG','Chile':'CHL','Colombia':'COL','Peru':'PER',
+    'Israel':'ISR','Pakistan':'PAK','Bangladesh':'BGD','Sri Lanka':'LKA','Ukraine':'UKR',
+    'New Caledonia':'NCL','Puerto Rico':'PRI','Fr. Polynesia':'PYF','Dominican Rep.':'DOM',
+    'Costa Rica':'CRI','Panama':'PAN','Cuba':'CUB','Jamaica':'JAM','Myanmar':'MMR',
+    'Mongolia':'MNG','Kazakhstan':'KAZ','Uzbekistan':'UZB','Dem. Rep. Korea':'PRK',
+}
 
 
 def _norm_geo(n):
@@ -194,18 +263,27 @@ def build_geo(rows, meta):
         if name_map and len(name_map) < len(root):
             print('  ⚠ 部分国家名未匹配到世界地图：%s（参考 references/country_map.json）'
                   % '、'.join(k for k in root if k not in name_map))
-        # 国家内下钻：数据含 省/州 列时，挂载该国的州/省界地图（离线内嵌，支持地图下钻）
+        # 国家内下钻：数据含 省/州 列时，挂载该国的州/省界地图（按需：缓存 → geoBoundaries API → 失败降级柱状）
         if 'prov' in rk:
             for en in set(name_map.values()):
-                sub_file = os.path.join(BASE, 'assets', 'countries', en + '.json')
-                if en == 'China' and not os.path.exists(sub_file):
-                    sub_file = GEO_PROV                    # 中国：复用合规省界
-                if os.path.exists(sub_file):
+                if en == 'China':
                     try:
-                        with open(sub_file, encoding='utf-8') as fp:
-                            geoJSONs[en] = json.load(fp)
+                        with open(GEO_PROV, encoding='utf-8') as fp:
+                            geoJSONs['China'] = json.load(fp)
                     except Exception:
                         pass
+                    continue
+                sub = fetch_sub_geo(en)
+                if sub:
+                    # 预剥离行政区后缀，让 features.name 与用户数据短名匹配（如 'Osaka Prefecture'→'Osaka'），并保留 _fullName
+                    for f in sub.get('features', []):
+                        p = f.setdefault('properties', {})
+                        orig = p.get('name') or p.get('shapeName') or ''
+                        if not orig: continue
+                        p['_fullName'] = orig
+                        short = re.sub(r' (Prefecture|State|Province|Oblast|Republic|Region|County|Autonomous Region|Department|Governorate|Regency|Capital District|Municipality|SAR|道|府|州|県|都)\s*$', '', orig).strip() or orig
+                        p['name'] = short
+                    geoJSONs[en] = sub
         return {'root': {'a': 0, 'c': 0, 'children': root}, 'geoJSONs': geoJSONs,
                 'rk': rk, 'world': True, 'nameMap': name_map}
 
@@ -494,6 +572,10 @@ def main():
     if geo:
         njson = len(geo['geoJSONs'])
         print(f'  🌏 真实地图：已内嵌 {njson} 份合规边界（省→市→县逐级钻取，金额按颜色深浅）')
+    if _SUB_GEO_FAILS:
+        print('  ⚠ 以下国家州/省地图未加载（网络受限或 ISO3 未内置），请从 https://www.geoboundaries.org/ 下载简化版 GeoJSON 并放入 assets/countries/<英文国家名>.json')
+        for nm, why in _SUB_GEO_FAILS:
+            print(f'     · {nm} ({why})')
     return EXIT_OK
 
 

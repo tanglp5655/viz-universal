@@ -2,6 +2,18 @@
 
 本项目遵循语义化版本；重大功能与修复在此记录。
 
+## [0.6.0] - 2026-08-15 — 国家州/省界按需自动下载
+
+### 新增
+- **"有数据就加载、没有就降级"** — 完善世界地图下钻：
+  - 缓存优先：`assets/countries/<英文国家名>.json` 存在即用
+  - 自动联网：`fetch_sub_geo()` 通过 **geoBoundaries API**（gbOpen/CC-BY 0）按数据中的国家自动下载 ADM1 简化版 GeoJSON，剥行政区后缀（Prefecture/State/Province/Oblast/...）让短名与数据匹配，保留 `_fullName` 用于 tooltip 显示全称
+  - 内置 ~80 国 ISO3 映射（中日美英德法韩印俄等）
+  - 失败提示：生成时 main() 输出"⚠ 以下国家未加载 + 从 https://www.geoboundaries.org/ 下载并放入 assets/countries/<英文国家名>.json"
+  - 已成功自动加载示例：United States（50 州，folium 源）、Japan（47 县，geoBoundaries）、Singapore（5 区）、Germany（16 州）等
+- 演示看板更新：world + 中国 + 美国（地图下钻）+ 日本/新加坡（临时柱状兜底）
+- 回归 90/90 全过
+
 ## [0.5.0] - 2026-08-15 — 国家内地图下钻（州/省界）
 
 ### 新增
