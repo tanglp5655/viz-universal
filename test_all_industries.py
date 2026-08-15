@@ -484,7 +484,10 @@ def main():
             check("世界地图: 中文国家名已映射英文",
                   bool(geo and geo.get("nameMap", {}).get("中国") == "China")
                   and geo["nameMap"].get("美国") == "United States")
-            check("世界地图: 中国省界已挂载(下钻)", bool(geo and "100000" in geo.get("geoJSONs", {})))
+            check("世界地图: 中国省界已挂载(地图下钻)",
+                  bool(geo and geo.get("geoJSONs", {}).get("China", {}).get("features")))
+            check("世界地图: 美国州界已挂载(地图下钻)",
+                  bool(geo and geo.get("geoJSONs", {}).get("United States", {}).get("features")))
             check("世界地图: 国家内省份保留", bool(geo and geo.get("root", {}).get("children", {}).get("中国", {})
                                              .get("children", {}).get("浙江省")))
             check("世界地图: 聚合金额一致",

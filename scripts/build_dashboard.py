@@ -194,14 +194,18 @@ def build_geo(rows, meta):
         if name_map and len(name_map) < len(root):
             print('  ⚠ 部分国家名未匹配到世界地图：%s（参考 references/country_map.json）'
                   % '、'.join(k for k in root if k not in name_map))
-        # 中国有离线省界：数据含 省/州 列且含中国 → 挂载，实现地图下钻
-        china_keys = [k for k in name_map if name_map[k] == 'China']
-        if 'prov' in rk and china_keys:
-            try:
-                with open(GEO_PROV, encoding='utf-8') as fp:
-                    geoJSONs['100000'] = json.load(fp)
-            except Exception:
-                pass
+        # 国家内下钻：数据含 省/州 列时，挂载该国的州/省界地图（离线内嵌，支持地图下钻）
+        if 'prov' in rk:
+            for en in set(name_map.values()):
+                sub_file = os.path.join(BASE, 'assets', 'countries', en + '.json')
+                if en == 'China' and not os.path.exists(sub_file):
+                    sub_file = GEO_PROV                    # 中国：复用合规省界
+                if os.path.exists(sub_file):
+                    try:
+                        with open(sub_file, encoding='utf-8') as fp:
+                            geoJSONs[en] = json.load(fp)
+                    except Exception:
+                        pass
         return {'root': {'a': 0, 'c': 0, 'children': root}, 'geoJSONs': geoJSONs,
                 'rk': rk, 'world': True, 'nameMap': name_map}
 

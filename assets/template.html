@@ -1393,9 +1393,10 @@ function geoGoto(path){
   geoCur = node;
   if(GEO.world){
     if(geoCrumbs.length===0) geoCurKey = 'world';
-    else if(geoCrumbs.length===1 && GEO.geoJSONs['100000'] && GEO.nameMap && GEO.nameMap[geoCrumbs[0]]==='China')
-      geoCurKey = '100000';            // 中国 → 离线省界地图下钻
-    else geoCurKey = '';               // 其它国家：无省界地图 → 柱状排行
+    else {
+      var en = (GEO.nameMap && GEO.nameMap[geoCrumbs[0]]) || geoCrumbs[0];
+      geoCurKey = GEO.geoJSONs[en] ? en : '';   // 有该国州/省界 → 地图下钻；否则柱状排行兜底
+    }
   }
   else if(geoCrumbs.length===0) geoCurKey='100000';
   else { var nm=geoCrumbs[geoCrumbs.length-1]; geoCurKey = geoAlias[normGeoName(nm)]||geoAlias[nm]||'100000'; }
