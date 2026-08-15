@@ -1,8 +1,13 @@
 # viz-universal
 
-把任意行业的明细数据（Excel / CSV / JSON）转成一个 **单文件 HTML 看板**：脱敏、可选密码加密、完全离线、手机/电脑可用，并通过 **声明式 viz-schema** 让不同行业用一份配置即可适配，无需改代码。
+[![CI](https://github.com/tanglp5655/viz-universal/actions/workflows/ci.yml/badge.svg)](https://github.com/tanglp5655/viz-universal/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/github/license/tanglp5655/viz-universal)](LICENSE)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)](pyproject.toml)
+[![GitHub stars](https://img.shields.io/github/stars/tanglp5655/viz-universal)](https://github.com/tanglp5655/viz-universal)
 
-> 跨行业通用可视化 · 图表 + 真实中国地图（省→市→区钻取）+ 人物画像 · 脱敏 + 加密
+把任意行业的明细数据（Excel / CSV / JSON / SQLite / URL）转成一个 **单文件 HTML 看板**：脱敏、可选密码加密（默认免密）、完全离线、手机/电脑可用，并通过 **声明式 viz-schema** 让不同行业用一份配置即可适配，无需改代码。
+
+> 跨行业通用可视化 · 图表 + 真实中国地图（省→市→区钻取）+ 人物画像 · 脱敏 + 加密 · 全图点击联动
 
 ## ✨ 特性
 
