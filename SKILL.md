@@ -3,7 +3,7 @@ name: viz-universal
 description: 跨行业通用的数据/流程可视化技能。把任意结构化数据（销售、运营、物流、医疗、教育等）做成「脱敏 + 可选密码加密」的单文件交互看板，支持图表、真实中国地图（颜色深浅+省→市→区钻取）、人物画像，并通过声明式 viz-schema 配置零代码适配不同行业。触发词：可视化、看板、数据可视化、脱敏、加密看板、做个看板、行业看板、地图可视化。
 metadata:
   author: WorkBuddy
-  version: "0.1"
+  version: "0.2.2"
   agent_created: true
 ---
 
