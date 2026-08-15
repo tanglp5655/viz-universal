@@ -455,12 +455,11 @@ def main():
     # 世界地图模式（含"国家"列 → regionKeys=['country'] → 世界地图）
     # ------------------------------------------------------------------
     world_rows = [
-        {"报名日期": "2026-05-01", "客户名称": "甲公司", "金额": 50000, "国家": "中国", "支付方式": "对公转账"},
-        {"报名日期": "2026-05-02", "客户名称": "乙公司", "金额": 30000, "国家": "美国", "支付方式": "电汇"},
-        {"报名日期": "2026-06-03", "客户名称": "丙公司", "金额": 20000, "国家": "日本", "支付方式": "微信"},
-        {"报名日期": "2026-06-04", "客户名称": "丁公司", "金额": 15000, "国家": "德国", "支付方式": "支付宝"},
-        {"报名日期": "2026-07-05", "客户名称": "戊公司", "金额": 12000, "国家": "英国", "支付方式": "银行卡"},
-        {"报名日期": "2026-07-06", "客户名称": "己公司", "金额": 8000, "国家": "新加坡", "支付方式": "对公转账"},
+        {"报名日期": "2026-05-01", "客户名称": "甲公司", "金额": 30000, "国家": "中国", "省份": "浙江省", "支付方式": "对公转账"},
+        {"报名日期": "2026-05-02", "客户名称": "乙公司", "金额": 20000, "国家": "中国", "省份": "广东省", "支付方式": "电汇"},
+        {"报名日期": "2026-06-03", "客户名称": "丙公司", "金额": 15000, "国家": "美国", "省份": "California", "支付方式": "微信"},
+        {"报名日期": "2026-06-04", "客户名称": "丁公司", "金额": 10000, "国家": "美国", "省份": "New York", "支付方式": "支付宝"},
+        {"报名日期": "2026-07-05", "客户名称": "戊公司", "金额": 12000, "国家": "日本", "省份": "Tokyo", "支付方式": "银行卡"},
     ]
     w_raw = os.path.join(out_dir, "_w_raw.json")
     with open(w_raw, "w", encoding="utf-8") as fp:
@@ -470,7 +469,7 @@ def main():
     check("世界地图: anonymize 执行", p.returncode == 0)
     if p.returncode == 0:
         wd = json.load(open(w_masked, encoding="utf-8"))
-        check("世界地图: regionKeys=['country']", wd["meta"].get("regionKeys") == ["country"],
+        check("世界地图: regionKeys=[country,prov]", wd["meta"].get("regionKeys") == ["country", "prov"],
               str(wd["meta"].get("regionKeys")))
         w_html = os.path.join(out_dir, "_w.html")
         p = run_py(BUILD, ["-i", w_masked, "-o", w_html, "--no-lock", "--title", "世界地图测试"])
@@ -483,8 +482,11 @@ def main():
             check("世界地图: 内嵌世界 GeoJSON",
                   bool(geo and geo.get("geoJSONs", {}).get("world", {}).get("features", [])))
             check("世界地图: 中文国家名已映射英文",
-                  bool(geo and geo.get("root", {}).get("children", {}).get("China"))
-                  and "United States" in geo["root"]["children"])
+                  bool(geo and geo.get("nameMap", {}).get("中国") == "China")
+                  and geo["nameMap"].get("美国") == "United States")
+            check("世界地图: 中国省界已挂载(下钻)", bool(geo and "100000" in geo.get("geoJSONs", {})))
+            check("世界地图: 国家内省份保留", bool(geo and geo.get("root", {}).get("children", {}).get("中国", {})
+                                             .get("children", {}).get("浙江省")))
             check("世界地图: 聚合金额一致",
                   bool(geo and sum(c["a"] for c in geo["root"]["children"].values())
                        == sum(r["金额"] for r in world_rows)))

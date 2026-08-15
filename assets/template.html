@@ -1274,7 +1274,8 @@ function geoNodeChildren(node){
   });
   var out = [];
   for(var k in m){
-    var canon = geoNameAlias[normGeoName(k)] || geoNameAlias[k] || k;
+    var canon = (GEO.world && GEO.nameMap) ? (GEO.nameMap[k] || k)
+               : (geoNameAlias[normGeoName(k)] || geoNameAlias[k] || k);
     out.push({name:canon, orig:k, value:m[k].a, cnt:m[k].c});
   }
   return out.sort(function(x,y){return y.value-x.value});
@@ -1289,7 +1290,11 @@ function geoColor(v,max){
 function renderGeo(key, node, crumbs){
   if(!geoChart) return;
   var gj = GEO.geoJSONs[key];
-  if(!gj){ document.getElementById('geoLegend').innerHTML='<span class="lg">该层级暂无地图边界数据</span>'; return; }
+  if(!gj){
+    if(crumbs.length>0){ renderGeoRank(node, crumbs); return; }   // 世界下钻：无省界 → 柱状排行
+    document.getElementById('geoLegend').innerHTML='<span class="lg">该层级暂无地图边界数据</span>';
+    return;
+  }
   echarts.registerMap('GEO', gj);
   var data = geoNodeChildren(node); geoData = data;
   var vals = data.map(function(d){return d.value;});
@@ -1324,6 +1329,42 @@ function renderGeo(key, node, crumbs){
     return '<span class="lg"><i style="background:'+geoColor(d.value,max)+'"></i>'+d.name+'</span>'; }).join('');
 }
 
+/* 世界地图下钻：无该国省界地图时，用柱状排行展示省/州并支持点击联动 */
+function renderGeoRank(node, crumbs){
+  if(!geoChart) return;
+  var data = geoNodeChildren(node); geoData = data;
+  var crumb=document.getElementById('geoCrumb');
+  var h='<span class="rc" data-l="-1">全球</span> <span class="rsep">›</span> <span class="rc cur">'+crumbs[0]+'</span>';
+  crumb.innerHTML=h;
+  crumb.querySelectorAll('.rc').forEach(function(el){ el.onclick=function(){
+    var l=parseInt(el.getAttribute('data-l'),10);
+    var path=(l<0)?[]:crumbs.slice(0,l+1);
+    REGIONFILTER={}; for(var i=0;i<path.length;i++) REGIONFILTER[GEO.rk[i]]=path[i];
+    geoGoto(path); render();
+  }; });
+  var dmax = Math.max.apply(null, data.map(function(d){return d.value;}).concat([1]));
+  geoChart.setOption({
+    tooltip:{trigger:'axis', confine:true,
+      formatter:function(ps){ var p=ps[0]; return p.name+'<br>金额 '+money(p.value)+'（'+shortMoney(p.value)+'）<br>笔数 '+(data[p.dataIndex]?data[p.dataIndex].cnt:0); }},
+    grid:{left:100,right:40,top:16,bottom:26},
+    xAxis:{type:'value', name:'金额', axisLabel:{color:'#8899b0',fontSize:9}},
+    yAxis:{type:'category', data:data.map(function(d){return d.name;}), axisLabel:{color:'#8899b0',fontSize:10}},
+    series:[{type:'bar', data:data.map(function(d){return d.value;}), barWidth:'52%',
+      itemStyle:{color:'#5b7fff',borderRadius:[0,5,5,0]},
+      label:{show:true,position:'right',color:'#c8d6e5',fontSize:10,formatter:function(p){return shortMoney(p.value);}} }]
+  }, true);
+  geoChart.off('click');
+  geoChart.on('click', function(p){
+    var it=data[p.dataIndex]; if(!it||!GEO.rk[1]) return;
+    REGIONFILTER={};
+    REGIONFILTER[GEO.rk[0]] = crumbs[0];
+    REGIONFILTER[GEO.rk[1]] = it.orig;
+    geoGoto(crumbs.slice(0,1)); render();
+  });
+  document.getElementById('geoLegend').innerHTML = data.slice(0,12).map(function(d){
+    return '<span class="lg"><i style="background:'+geoColor(d.value,dmax)+'"></i>'+d.name+'</span>'; }).join('');
+}
+
 function onGeoClick(name){
   var item = geoData.filter(function(d){return d.name===name;})[0];
   if(!item) return;
@@ -1350,7 +1391,12 @@ function geoGoto(path){
   }
   if(!ok){ node=GEO.root; geoCrumbs=[]; }
   geoCur = node;
-  if(GEO.world){ geoCurKey = 'world'; }              // 世界地图：固定 world，无 adcode 层级
+  if(GEO.world){
+    if(geoCrumbs.length===0) geoCurKey = 'world';
+    else if(geoCrumbs.length===1 && GEO.geoJSONs['100000'] && GEO.nameMap && GEO.nameMap[geoCrumbs[0]]==='China')
+      geoCurKey = '100000';            // 中国 → 离线省界地图下钻
+    else geoCurKey = '';               // 其它国家：无省界地图 → 柱状排行
+  }
   else if(geoCrumbs.length===0) geoCurKey='100000';
   else { var nm=geoCrumbs[geoCrumbs.length-1]; geoCurKey = geoAlias[normGeoName(nm)]||geoAlias[nm]||'100000'; }
   // 渲染统一交给 render()，避免重复 setOption

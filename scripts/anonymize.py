@@ -421,7 +421,9 @@ def build(records, level='L2', scale=1.0, date_shift=0, mapping=None,
     # 5. 元信息：地区层级 / 性别 / 年龄（供看板做钻取与人物画像）
     meta = {'regionKeys': [], 'genderKey': None, 'ageKey': None}
     if any('country' in r for r in out):
-        meta['regionKeys'] = ['country']          # 含国家列 → 世界地图模式
+        # 含国家列 → 世界地图模式（可带省/州实现国家内下钻）
+        sub = [k for k in ('prov', 'city', 'county', 'dist') if any(k in r for r in out)]
+        meta['regionKeys'] = ['country'] + sub
     else:
         order = ['prov', 'city', 'county', 'dist']
         rk = [k for k in order if any(k in r for r in out)]

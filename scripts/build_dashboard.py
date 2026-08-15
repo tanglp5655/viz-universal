@@ -176,7 +176,7 @@ def build_geo(rows, meta):
             node = node[nm]['children']
 
     if is_world:
-        # ---------- 世界地图（国家级，离线内嵌） ----------
+        # ---------- 世界地图（国家级；数据含省/州时支持向下钻取） ----------
         try:
             with open(GEO_WORLD, encoding='utf-8') as fp:
                 world_geo = json.load(fp)
@@ -184,22 +184,26 @@ def build_geo(rows, meta):
             print('  ⚠ 缺少世界边界文件 assets/world_countries.json：%s' % e)
             return None
         geoJSONs = {'world': world_geo}
-        alias = {}
-        for f in world_geo['features']:
-            nm = (f.get('properties') or {}).get('name')
-            if nm:
-                alias[nm] = nm
-        # 数据里的国家名（可能中文）→ 映射为 GeoJSON 英文名；英文原样保留
-        merged = {}
-        for nm, node in root.items():
-            key = COUNTRY_MAP.get(nm, nm)
-            merged[key] = node
-        # 只保留世界地图上存在的国家
-        keep = {nm: node for nm, node in merged.items() if nm in alias}
-        if not keep and root:
-            print('  ⚠ 数据中的国家名未匹配到世界地图（参考 references/country_map.json 中英映射）')
-        return {'root': {'a': 0, 'c': 0, 'children': keep}, 'geoJSONs': geoJSONs,
-                'rk': ['country'], 'world': True}
+        world_names = {(f.get('properties') or {}).get('name') for f in world_geo['features']}
+        # 中文国家名 → 英文（数据原值保留在树里，渲染时经 nameMap 转英文匹配地图）
+        name_map = {}
+        for nm in root:
+            en = COUNTRY_MAP.get(nm, nm)
+            if en in world_names:
+                name_map[nm] = en
+        if name_map and len(name_map) < len(root):
+            print('  ⚠ 部分国家名未匹配到世界地图：%s（参考 references/country_map.json）'
+                  % '、'.join(k for k in root if k not in name_map))
+        # 中国有离线省界：数据含 省/州 列且含中国 → 挂载，实现地图下钻
+        china_keys = [k for k in name_map if name_map[k] == 'China']
+        if 'prov' in rk and china_keys:
+            try:
+                with open(GEO_PROV, encoding='utf-8') as fp:
+                    geoJSONs['100000'] = json.load(fp)
+            except Exception:
+                pass
+        return {'root': {'a': 0, 'c': 0, 'children': root}, 'geoJSONs': geoJSONs,
+                'rk': rk, 'world': True, 'nameMap': name_map}
 
     # ---------- 中国地图（省→市→区钻取） ----------
     try:
