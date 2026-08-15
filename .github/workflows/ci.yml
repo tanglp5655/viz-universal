@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.12', '3.13']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install openpyxl
+      - name: Run multi-industry regression
+        run: python test_all_industries.py
+      - name: Smoke test stdin pipeline
+        run: |
+          echo '[{"成交日期":"2026-05-03","客户名称":"测试客户","金额":100,"支付方式":"微信"}]' \
+            | python scripts/anonymize.py -i - -o /tmp/smoke_masked.json --level L2
+          python scripts/build_dashboard.py -i /tmp/smoke_masked.json -o /tmp/smoke.html --no-lock --title "CI 冒烟测试"
+          test -s /tmp/smoke.html && echo "smoke OK"

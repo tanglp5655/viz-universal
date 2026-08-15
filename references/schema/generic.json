@@ -1,0 +1,11 @@
+{
+  "meta": {"industry": "generic", "title_default": "数据可视化看板", "lang": "zh", "compliance": "cn"},
+  "labels": {
+    "geo": "地区分布",
+    "gender": "男女比例",
+    "age": "年龄结构"
+  },
+  "panels": ["geo", "gender", "age", "table"],
+  "theme": {"palette": "default"},
+  "security": {"anonymize": "L2", "encrypt": true, "passwordByUser": true}
+}

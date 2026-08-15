@@ -1,0 +1,88 @@
+{
+  "meta": {
+    "industry": "sales_full",
+    "title_default": "全功能看板示例",
+    "lang": "zh",
+    "compliance": "cn"
+  },
+  "labels": {
+    "geo": "区域营收地图",
+    "gender": "客户性别",
+    "age": "客户年龄",
+    "c": "科目/产品",
+    "src": "来源",
+    "signer": "签单人",
+    "p": "支付方式"
+  },
+  "panels": [
+    "gauge",
+    "funnel",
+    "heatmap",
+    "sankey",
+    "radar",
+    "treemap",
+    "topology",
+    "cohort",
+    "geo",
+    "gender",
+    "age",
+    "table"
+  ],
+  "funnel": {
+    "title": "销售转化漏斗",
+    "stageKey": "stage",
+    "measure": "a",
+    "stages": ["线索", "商机", "报价", "谈判", "成交"]
+  },
+  "heatmap": {
+    "title": "城市 × 转化阶段 金额热力",
+    "rowKey": "city",
+    "colKey": "stage",
+    "measure": "a"
+  },
+  "sankey": {
+    "title": "渠道 → 转化路径 流向图",
+    "sourceKey": "ssrc",
+    "targetKey": "star",
+    "measure": "a"
+  },
+  "radar": {
+    "title": "城市 × 阶段 转化能力雷达",
+    "seriesKey": "city",
+    "axisKey": "stage",
+    "measure": "a",
+    "seriesLabel": "城市",
+    "axisLabel": "转化阶段"
+  },
+  "gauge": {
+    "title": "销售目标达成率",
+    "measure": "a",
+    "target": 800000,
+    "label": "累计销售额"
+  },
+  "treemap": {
+    "title": "渠道 → 科目 营收树图",
+    "keys": ["src", "c"],
+    "measure": "a"
+  },
+  "topology": {
+    "title": "渠道 → 阶段 关系拓扑",
+    "sourceKey": "src",
+    "targetKey": "stage",
+    "measure": "a"
+  },
+  "cohort": {
+    "title": "渠道 × 阶段 转化留存矩阵",
+    "groupKey": "src",
+    "stepKey": "stage",
+    "measure": "a"
+  },
+  "theme": {
+    "palette": "sales"
+  },
+  "security": {
+    "anonymize": "L2",
+    "encrypt": true,
+    "passwordByUser": true
+  }
+}

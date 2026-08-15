@@ -1,0 +1,60 @@
+{
+  "meta": {"industry": "retail", "title_default": "零售经营看板", "lang": "zh", "compliance": "cn"},
+  "labels": {
+    "geo": "门店地区分布",
+    "gender": "顾客男女比例",
+    "age": "顾客年龄结构"
+  },
+  "funnel": {
+    "title": "会员转化漏斗",
+    "stageKey": "stage",
+    "measure": "count",
+    "stages": ["访客", "加购", "下单", "支付", "复购"]
+  },
+  "heatmap": {
+    "title": "门店 × 商品 金额热力",
+    "rowKey": "campus",
+    "colKey": "c",
+    "measure": "a"
+  },
+  "sankey": {
+    "title": "来源 → 商品 流向图",
+    "sourceKey": "src",
+    "targetKey": "c",
+    "measure": "a"
+  },
+  "radar": {
+    "title": "门店 × 商品 经营能力雷达",
+    "seriesKey": "campus",
+    "axisKey": "c",
+    "measure": "a",
+    "seriesLabel": "门店",
+    "axisLabel": "商品"
+  },
+  "gauge": {
+    "title": "销售目标达成率",
+    "measure": "a",
+    "target": 500000,
+    "label": "累计销售额"
+  },
+  "treemap": {
+    "title": "来源 → 商品 营收树图",
+    "keys": ["src", "c"],
+    "measure": "a"
+  },
+  "topology": {
+    "title": "来源 → 商品 关系拓扑",
+    "sourceKey": "src",
+    "targetKey": "c",
+    "measure": "a"
+  },
+  "cohort": {
+    "title": "来源 × 会员阶段 转化留存矩阵",
+    "groupKey": "src",
+    "stepKey": "stage",
+    "measure": "a"
+  },
+  "panels": ["gauge", "funnel", "sankey", "topology", "geo", "heatmap", "radar", "treemap", "cohort", "gender", "age", "table"],
+  "theme": {"palette": "retail"},
+  "security": {"anonymize": "L2", "encrypt": true, "passwordByUser": true}
+}

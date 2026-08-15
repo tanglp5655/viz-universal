@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "viz-universal"
+version = "0.1.0"
+description = "跨行业通用数据可视化：把 Excel/CSV/JSON 转成脱敏+密码加密的单文件交互看板（图表/中国地图钻取/人物画像）"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "WorkBuddy" }]
+keywords = ["data-viz", "dashboard", "echarts", "map", "anonymize", "encrypt"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+]
+dependencies = ["openpyxl>=3.1"]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[project.scripts]
+viz-anonymize = "scripts.anonymize:main"
+viz-build = "scripts.build_dashboard:main"
+
+[tool.setuptools]
+packages = ["scripts"]

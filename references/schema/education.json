@@ -1,0 +1,60 @@
+{
+  "meta": {"industry": "education", "title_default": "招生分析看板", "lang": "zh", "compliance": "cn"},
+  "labels": {
+    "geo": "校区地区分布",
+    "gender": "学员男女比例",
+    "age": "学员年龄结构"
+  },
+  "funnel": {
+    "title": "招生转化漏斗",
+    "stageKey": "stage",
+    "measure": "count",
+    "stages": ["线索", "试听", "报名", "成交"]
+  },
+  "heatmap": {
+    "title": "城市 × 招生阶段 金额热力",
+    "rowKey": "city",
+    "colKey": "stage",
+    "measure": "a"
+  },
+  "sankey": {
+    "title": "招生来源 → 阶段 流向图",
+    "sourceKey": "src",
+    "targetKey": "stage",
+    "measure": "a"
+  },
+  "radar": {
+    "title": "城市 × 阶段 招生能力雷达",
+    "seriesKey": "city",
+    "axisKey": "stage",
+    "measure": "a",
+    "seriesLabel": "城市",
+    "axisLabel": "招生阶段"
+  },
+  "gauge": {
+    "title": "招生目标达成率",
+    "measure": "a",
+    "target": 600000,
+    "label": "累计招生金额"
+  },
+  "treemap": {
+    "title": "来源 → 课程 营收树图",
+    "keys": ["src", "c"],
+    "measure": "a"
+  },
+  "topology": {
+    "title": "来源 → 阶段 关系拓扑",
+    "sourceKey": "src",
+    "targetKey": "stage",
+    "measure": "a"
+  },
+  "cohort": {
+    "title": "来源 × 阶段 转化留存矩阵",
+    "groupKey": "src",
+    "stepKey": "stage",
+    "measure": "a"
+  },
+  "panels": ["gauge", "funnel", "sankey", "topology", "geo", "heatmap", "radar", "treemap", "cohort", "gender", "age", "table"],
+  "theme": {"palette": "education"},
+  "security": {"anonymize": "L2", "encrypt": true, "passwordByUser": true}
+}

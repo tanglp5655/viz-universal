@@ -1,0 +1,60 @@
+{
+  "meta": {"industry": "clinic", "title_default": "门诊经营看板", "lang": "zh", "compliance": "cn"},
+  "labels": {
+    "geo": "院区地区分布",
+    "gender": "患者男女比例",
+    "age": "患者年龄结构"
+  },
+  "funnel": {
+    "title": "就诊转化漏斗",
+    "stageKey": "stage",
+    "measure": "count",
+    "stages": ["初诊", "检查", "诊断", "治疗", "复诊"]
+  },
+  "heatmap": {
+    "title": "院区 × 项目 金额热力",
+    "rowKey": "campus",
+    "colKey": "c",
+    "measure": "a"
+  },
+  "sankey": {
+    "title": "患者来源 → 科室 流向图",
+    "sourceKey": "src",
+    "targetKey": "c",
+    "measure": "a"
+  },
+  "radar": {
+    "title": "院区 × 项目 接诊能力雷达",
+    "seriesKey": "campus",
+    "axisKey": "c",
+    "measure": "a",
+    "seriesLabel": "院区",
+    "axisLabel": "项目/科室"
+  },
+  "gauge": {
+    "title": "接诊目标达成率",
+    "measure": "a",
+    "target": 400000,
+    "label": "累计接诊金额"
+  },
+  "treemap": {
+    "title": "院区 → 项目 营收树图",
+    "keys": ["campus", "c"],
+    "measure": "a"
+  },
+  "topology": {
+    "title": "来源 → 科室 关系拓扑",
+    "sourceKey": "src",
+    "targetKey": "c",
+    "measure": "a"
+  },
+  "cohort": {
+    "title": "来源 × 就诊阶段 转化留存矩阵",
+    "groupKey": "src",
+    "stepKey": "stage",
+    "measure": "a"
+  },
+  "panels": ["gauge", "funnel", "sankey", "topology", "geo", "heatmap", "radar", "treemap", "cohort", "gender", "age", "table"],
+  "theme": {"palette": "clinic"},
+  "security": {"anonymize": "L2", "encrypt": true, "passwordByUser": true}
+}

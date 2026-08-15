@@ -1,0 +1,60 @@
+{
+  "meta": {"industry": "logistics", "title_default": "仓网分析看板", "lang": "zh", "compliance": "cn"},
+  "labels": {
+    "geo": "仓网分布",
+    "gender": "人员性别",
+    "age": "人员年龄"
+  },
+  "funnel": {
+    "title": "履约漏斗",
+    "stageKey": "stage",
+    "measure": "count",
+    "stages": ["下单", "出库", "揽收", "运输", "签收"]
+  },
+  "heatmap": {
+    "title": "城市 × 履约阶段 单量热力",
+    "rowKey": "city",
+    "colKey": "stage",
+    "measure": "count"
+  },
+  "sankey": {
+    "title": "渠道 → 履约阶段 流向图",
+    "sourceKey": "src",
+    "targetKey": "stage",
+    "measure": "a"
+  },
+  "radar": {
+    "title": "城市 × 阶段 履约能力雷达",
+    "seriesKey": "city",
+    "axisKey": "stage",
+    "measure": "a",
+    "seriesLabel": "城市",
+    "axisLabel": "履约阶段"
+  },
+  "gauge": {
+    "title": "物流目标达成率",
+    "measure": "a",
+    "target": 500000,
+    "label": "累计运费"
+  },
+  "treemap": {
+    "title": "渠道 → 货物 运费树图",
+    "keys": ["src", "c"],
+    "measure": "a"
+  },
+  "topology": {
+    "title": "渠道 → 阶段 关系拓扑",
+    "sourceKey": "src",
+    "targetKey": "stage",
+    "measure": "a"
+  },
+  "cohort": {
+    "title": "渠道 × 阶段 履约留存矩阵",
+    "groupKey": "src",
+    "stepKey": "stage",
+    "measure": "a"
+  },
+  "panels": ["gauge", "funnel", "sankey", "topology", "geo", "heatmap", "radar", "treemap", "cohort", "gender", "age", "table"],
+  "theme": {"palette": "logistics"},
+  "security": {"anonymize": "L1", "encrypt": true, "passwordByUser": true}
+}

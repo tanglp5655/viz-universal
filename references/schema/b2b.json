@@ -1,0 +1,60 @@
+{
+  "meta": {"industry": "b2b", "title_default": "B2B 销售看板", "lang": "zh", "compliance": "cn"},
+  "labels": {
+    "geo": "业务地区分布",
+    "gender": "客户男女比例",
+    "age": "客户年龄结构"
+  },
+  "funnel": {
+    "title": "商机转化漏斗",
+    "stageKey": "stage",
+    "measure": "count",
+    "stages": ["线索", "商机", "方案", "报价", "成交"]
+  },
+  "heatmap": {
+    "title": "部门 × 产品 金额热力",
+    "rowKey": "campus",
+    "colKey": "c",
+    "measure": "a"
+  },
+  "sankey": {
+    "title": "渠道 → 产品 流向图",
+    "sourceKey": "src",
+    "targetKey": "c",
+    "measure": "a"
+  },
+  "radar": {
+    "title": "部门 × 产品 销售能力雷达",
+    "seriesKey": "campus",
+    "axisKey": "c",
+    "measure": "a",
+    "seriesLabel": "部门",
+    "axisLabel": "产品"
+  },
+  "gauge": {
+    "title": "业绩目标达成率",
+    "measure": "a",
+    "target": 1200000,
+    "label": "累计签约金额"
+  },
+  "treemap": {
+    "title": "部门 → 产品 营收树图",
+    "keys": ["campus", "c"],
+    "measure": "a"
+  },
+  "topology": {
+    "title": "渠道 → 产品 关系拓扑",
+    "sourceKey": "src",
+    "targetKey": "c",
+    "measure": "a"
+  },
+  "cohort": {
+    "title": "渠道 × 商机阶段 转化留存矩阵",
+    "groupKey": "src",
+    "stepKey": "stage",
+    "measure": "a"
+  },
+  "panels": ["gauge", "funnel", "sankey", "topology", "geo", "heatmap", "radar", "treemap", "cohort", "table"],
+  "theme": {"palette": "b2b"},
+  "security": {"anonymize": "L2", "encrypt": true, "passwordByUser": true}
+}

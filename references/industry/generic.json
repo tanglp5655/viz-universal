@@ -1,0 +1,17 @@
+{
+  "name": "通用（默认）",
+  "desc": "中性标签，不改动科目/商品名与支付方式，适合任意行业的通用销售分析。开箱即用、安全：不会把别的行业数据改坏。",
+  "customer_prefix": "客户",
+  "staff_label": "服务人员",
+  "staff_friendly_pool": null,
+  "staff_friendly_prefix": "服务人员",
+  "staff_code": { "teacher": "员工", "signer": "员工" },
+  "subject_remap_file": null,
+  "payment_remap": null,
+  "payment_keywords": null,
+  "payment_unknown": "__keep__",
+  "dim_labels": {
+    "c": "项目", "src": "来源", "signer": "签单人",
+    "teacher": "服务人员", "p": "支付方式", "campus": "门店/部门"
+  }
+}

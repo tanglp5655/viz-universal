@@ -1,0 +1,1361 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=5.0,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="referrer" content="no-referrer">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0b1219">
+<title>__PAGE_TITLE__</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei','Helvetica Neue',sans-serif;
+background:#0b1219;color:#c8d6e5;min-height:100vh;font-feature-settings:'tnum' 1,'kern' 1;
+padding-bottom:env(safe-area-inset-bottom)}
+.wrap{max-width:1400px;margin:0 auto;padding:16px}
+@media(min-width:768px){.wrap{padding:22px}}
+
+/* ---------- 锁屏 ---------- */
+.lock{position:fixed;inset:0;background:radial-gradient(ellipse at 50% 0%,#122032 0%,#0b1219 60%);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px}
+.lock.hide{display:none}
+.lockcard{background:linear-gradient(145deg,#13202e,#0f1a26);border:1px solid rgba(90,140,220,.14);border-radius:20px;padding:40px 30px;text-align:center;max-width:380px;width:100%;box-shadow:0 24px 70px rgba(0,0,0,.55)}
+.lockcard .ico{width:52px;height:52px;margin:0 auto 18px;border-radius:14px;background:linear-gradient(135deg,rgba(91,127,255,.18),rgba(64,191,176,.12));display:flex;align-items:center;justify-content:center;font-size:24px}
+.lockcard h2{font-size:18px;font-weight:600;color:#e8edf3;margin-bottom:6px;letter-spacing:.5px}
+.lockcard .sub{color:#6b8299;font-size:12.5px;margin-bottom:26px;line-height:1.6}
+.lockcard input{width:100%;padding:14px 16px;border-radius:12px;border:1.5px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);color:#e8edf3;font-size:17px;text-align:center;letter-spacing:4px;outline:none;transition:border-color .3s,box-shadow .3s}
+.lockcard input:focus{border-color:rgba(91,127,255,.55);box-shadow:0 0 26px rgba(91,127,255,.1)}
+.lockcard input.shake{animation:shake .4s}
+.lockcard button{width:100%;margin-top:12px;padding:13px;border-radius:12px;border:none;background:linear-gradient(135deg,#4f7cff,#3a63d8);color:#fff;font-size:15px;font-weight:600;cursor:pointer;letter-spacing:1px;transition:opacity .25s}
+.lockcard button:disabled{opacity:.45;cursor:default}
+.lockcard .err{color:#e8767a;font-size:12px;margin-top:12px;min-height:17px}
+.lockcard .bar{height:3px;border-radius:3px;background:rgba(255,255,255,.06);margin-top:16px;overflow:hidden;opacity:0;transition:opacity .3s}
+.lockcard .bar.on{opacity:1}
+.lockcard .bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#4f7cff,#40bfb0);transition:width .2s}
+@keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
+
+/* ---------- 头部 ---------- */
+.hd{background:linear-gradient(135deg,#111f2e,#0c1926);border-radius:16px;padding:18px 18px 14px;margin-bottom:14px;border:1px solid rgba(74,144,226,.09)}
+@media(min-width:768px){.hd{padding:22px 26px 16px}}
+.hd .top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.hd h1{font-size:17px;font-weight:600;color:#e0e8f0;letter-spacing:.3px;line-height:1.35}
+@media(min-width:768px){.hd h1{font-size:20px}}
+.hd .sub{color:#6b8299;font-size:11.5px;margin-top:4px;letter-spacing:.3px}
+.hd .lockbtn{flex-shrink:0;padding:6px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.09);background:rgba(255,255,255,.03);color:#7d93a8;font-size:11px;cursor:pointer;white-space:nowrap}
+.hd .lockbtn:active{background:rgba(255,255,255,.08)}
+.badge{display:inline-block;padding:2px 8px;border-radius:6px;font-size:10px;background:rgba(64,191,176,.12);color:#40bfb0;border:1px solid rgba(64,191,176,.22);margin-left:6px;vertical-align:1px}
+
+.btnrow{display:flex;gap:7px;flex-wrap:wrap;margin-top:14px}
+.btnrow .b{padding:8px 14px;border-radius:9px;border:1.5px solid rgba(255,255,255,.06);background:rgba(255,255,255,.02);color:#8899b0;font-size:12.5px;cursor:pointer;transition:all .25s;font-weight:500;touch-action:manipulation;text-align:center;line-height:1.3}
+.btnrow .b:active{transform:scale(.97)}
+.btnrow .b.on{background:linear-gradient(135deg,rgba(91,127,255,.16),rgba(91,127,255,.06));border-color:rgba(91,127,255,.42);color:#d0dce8}
+.btnrow .b .m{display:block;font-size:9.5px;font-weight:400;margin-top:3px;color:#556b7f}
+.btnrow .b.on .m{color:#6b8299}
+.btnrow.small .b{padding:6px 13px;font-size:12px}
+/* 图表样式切换高亮（青色） */
+.btnrow.ctb .b.on{background:linear-gradient(135deg,rgba(64,191,176,.18),rgba(64,191,176,.06));border-color:rgba(64,191,176,.5);color:#bff3ea}
+
+.chips{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:12px;min-height:22px}
+.chips .lb{font-size:11px;color:#556b7f}
+.chip{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:14px;font-size:11.5px;background:rgba(91,127,255,.11);border:1px solid rgba(91,127,255,.26);color:#8fabff;cursor:pointer}
+.chip .x{opacity:.6;font-size:13px;line-height:1}
+.chip.clr{background:rgba(232,118,122,.1);border-color:rgba(232,118,122,.25);color:#e8767a}
+
+/* 地区面包屑 */
+.rc{color:#7d93a8;cursor:pointer;font-size:11.5px;padding:2px 4px;border-radius:6px}
+.rc:hover{color:#9fb6cc;background:rgba(255,255,255,.04)}
+.rc.cur{color:#e8edf3;font-weight:600}
+.rsep{color:#3f5163;margin:0 1px}
+/* 图例 */
+.legend{display:flex;gap:6px 14px;flex-wrap:wrap;margin-top:12px}
+.legend .lg{display:inline-flex;align-items:center;gap:6px;font-size:11px;color:#8899b0}
+.legend .lg i{width:11px;height:11px;border-radius:3px;display:inline-block;flex-shrink:0}
+
+/* ---------- KPI ---------- */
+.kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:14px}
+@media(min-width:700px){.kpis{grid-template-columns:repeat(4,1fr);gap:12px}}
+.kpi{background:linear-gradient(145deg,rgba(255,255,255,.04),rgba(255,255,255,.01));border:1px solid rgba(255,255,255,.05);border-radius:13px;padding:14px 12px;text-align:center;position:relative;overflow:hidden}
+.kpi::before{content:'';position:absolute;top:0;left:22%;right:22%;height:2px;border-radius:0 0 4px 4px;opacity:.55}
+.kpi:nth-child(1)::before{background:linear-gradient(90deg,transparent,#d4a84b,transparent)}
+.kpi:nth-child(2)::before{background:linear-gradient(90deg,transparent,#5b7fff,transparent)}
+.kpi:nth-child(3)::before{background:linear-gradient(90deg,transparent,#40bfb0,transparent)}
+.kpi:nth-child(4)::before{background:linear-gradient(90deg,transparent,#e88d5a,transparent)}
+.kpi .l{font-size:9.5px;color:#556b7f;letter-spacing:1.2px;margin-bottom:5px;font-weight:500}
+.kpi .v{font-size:19px;font-weight:600;letter-spacing:-.4px;line-height:1.2}
+@media(min-width:768px){.kpi .v{font-size:23px}}
+.kpi .v.gold{color:#d4a84b}.kpi .v.blue{color:#5b7fff}.kpi .v.green{color:#40bfb0}.kpi .v.orange{color:#e88d5a}
+.kpi .d{font-size:10.5px;margin-top:4px;font-weight:500;color:#556b7f}
+.kpi .d.up{color:#e8767a}.kpi .d.down{color:#40bfb0}
+
+/* ---------- 卡片/图表 ---------- */
+.grid{display:grid;gap:12px;margin-bottom:12px;grid-template-columns:1fr}
+@media(min-width:900px){.grid.g2{grid-template-columns:1fr 1fr}}
+.card{background:linear-gradient(145deg,rgba(255,255,255,.035),rgba(255,255,255,.008));border-radius:13px;padding:15px 14px;border:1px solid rgba(255,255,255,.05)}
+@media(min-width:768px){.card{padding:18px}}
+.card .ct{font-size:12px;font-weight:500;color:#8899b0;margin-bottom:12px;letter-spacing:.5px;display:flex;justify-content:space-between;align-items:center}
+.card .ct .hint{font-size:10px;color:#4a5f72;font-weight:400}
+.cv{position:relative;width:100%}
+
+/* ---------- 明细表 ---------- */
+.tbl-tools{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+.tbl-tools input{flex:1;min-width:140px;padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.03);color:#c8d6e5;font-size:12.5px;outline:none}
+.tbl-tools input:focus{border-color:rgba(91,127,255,.4)}
+.tblwrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:8px}
+table{width:100%;border-collapse:collapse;font-size:11.5px;white-space:nowrap}
+th{text-align:left;padding:8px 10px;color:#6b8299;font-weight:500;border-bottom:1px solid rgba(255,255,255,.07);position:sticky;top:0;background:#101c28;font-size:10.5px;letter-spacing:.5px}
+td{padding:7px 10px;border-bottom:1px solid rgba(255,255,255,.035);color:#a9bdd0}
+tr:active td{background:rgba(255,255,255,.02)}
+td.num{text-align:right;color:#d4a84b;font-variant-numeric:tabular-nums}
+.more{text-align:center;padding:10px;color:#5b7fff;font-size:12px;cursor:pointer}
+
+.foot{text-align:center;color:#3f5163;font-size:10.5px;padding:18px 0 8px;line-height:1.7}
+/* ========== 手机端适配（P2：触屏友好 + 单列 + 横向滚动） ========== */
+@media(max-width:700px){
+  .wrap{padding:10px 10px 40px}
+  .hd{padding:14px 14px 10px}
+  .hd h1{font-size:17px}
+  .btnrow .b{padding:8px 11px;font-size:12px}
+  .btnrow .b .m{font-size:9.5px}
+  .chips{flex-wrap:wrap}
+  .card{padding:12px}
+  .cv{height:220px!important}
+  .kpis{gap:8px}
+  .kpi{padding:11px}
+  .kpi .v{font-size:18px}
+  .tblwrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .tblwrap table{min-width:560px}
+  .lockcard{width:88%;padding:22px}
+  .gender-card{flex-direction:row}
+}
+/* ========== 打印友好（P1 导出） ========== */
+@media print{
+  .lock{display:none!important}
+  .hd .btnrow,.hd .chips,.hd .lockbtn{display:none!important}
+  body{background:#fff!important}
+  .wrap{display:block!important;max-width:100%!important;padding:0!important}
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .card,.kpi{break-inside:avoid}
+}
+</style>
+</head>
+<body>
+
+<!-- 锁屏 -->
+<div class="lock" id="lock">
+  <div class="lockcard">
+    <div class="ico">🔒</div>
+    <h2>__LOCK_TITLE__</h2>
+    <div class="sub">数据已加密存储<br>请输入访问密码</div>
+    <input type="password" id="pw" placeholder="密码" autocomplete="off" inputmode="text">
+    <button id="btn">解 锁</button>
+    <div class="err" id="err"></div>
+    <div class="bar" id="bar"><i id="barfill"></i></div>
+  </div>
+</div>
+
+<!-- 主体 -->
+<div class="wrap" id="app" style="display:none">
+  <div class="hd">
+    <div class="top">
+      <div>
+        <h1 id="tTitle">—</h1>
+        <div class="sub" id="tSub">—</div>
+      </div>
+      <button class="lockbtn" id="relock">🔒 锁定</button>
+      <button class="lockbtn" id="exportPng" title="把当前所有图表导出为 PNG">⬇ 导出 PNG</button>
+    </div>
+    <div class="btnrow" id="periodBtns"></div>
+    <div class="btnrow small" id="quickBtns"></div>
+    <div class="btnrow small ctb" id="chartTypeBtns" style="display:none"></div>
+    <div class="chips" id="chips"></div>
+  </div>
+
+  <div class="kpis">
+    <div class="kpi"><div class="l" id="kl1">金额</div><div class="v gold" id="k1">—</div><div class="d" id="k1d"></div></div>
+    <div class="kpi"><div class="l">笔数</div><div class="v blue" id="k2">—</div><div class="d" id="k2d"></div></div>
+    <div class="kpi"><div class="l">客单价</div><div class="v green" id="k3">—</div><div class="d" id="k3d"></div></div>
+    <div class="kpi"><div class="l" id="kl4">数量</div><div class="v orange" id="k4">—</div><div class="d" id="k4d"></div></div>
+  </div>
+
+  <div class="grid" id="trendWrap">
+    <div class="card">
+      <div class="ct"><span>月度走势</span><span class="hint" id="trendHint">柱=金额 线=笔数</span></div>
+      <div class="cv" style="height:260px"><canvas id="cTrend"></canvas></div>
+    </div>
+  </div>
+
+  <div class="grid g2" id="dimGrid"></div>
+
+  <!-- 地区钻取 + 人物画像 -->
+  <div class="grid" id="extraGrid"></div>
+
+  <div class="card" id="tableCard" style="margin-bottom:12px">
+    <div class="ct"><span>明细数据</span><span class="hint" id="tblCount">—</span></div>
+    <div class="tbl-tools"><input id="q" placeholder="🔍 搜索（任意关键词）"></div>
+    <div class="tblwrap"><table><thead id="thead"></thead><tbody id="tbody"></tbody></table></div>
+    <div class="more" id="more" style="display:none">加载更多 ▾</div>
+  </div>
+
+  <div class="foot" id="foot">—</div>
+</div>
+
+<script>__CRYPTO_JS__</script>
+<script>__CHART_JS__</script>
+<script>/*ECHARTS_SRC*/</script>
+<script>
+var PAYLOAD = __PAYLOAD__;
+var PAYLOAD_VIEWER = __PAYLOAD_VIEWER__;   // 分级权限：访客视图加密载荷（无则 null）
+var VIEWER_MODE = false;                    // 当前是否处于访客视图（部分数据）
+var LOCKED = __LOCKED__;
+var D = null, CH = {}, VIEW = 'all', FILTERS = {}, SHOWN = 60, QUERY = '', BOUND = false;
+var GEO = null, geoChart = null, geoAlias = {}, geoNameAlias = {}, geoCur = null, geoCurKey = '100000', geoCrumbs = [], geoData = [];
+var FUNNEL = null, funnelChart = null;   // 漏斗图（ECharts 渲染，schema.funnel 驱动）
+var HEATMAP = null, heatmapChart = null;  // 热力图（ECharts 渲染，schema.heatmap 驱动）
+var SANKEY = null, sankeyChart = null;   // 桑基图（ECharts 渲染，schema.sankey 驱动）
+var RADAR = null, radarChart = null;     // 雷达图（ECharts 渲染，schema.radar 驱动）
+var GAUGE = null, gaugeChart = null;     // 仪表盘（ECharts 渲染，schema.gauge 驱动）
+var TREEMAP = null, treemapChart = null;  // 树图（ECharts 渲染，schema.treemap 驱动）
+var TOPO = null, topoChart = null;        // 拓扑图（ECharts 渲染，schema.topology 驱动）
+var COHORT = null, cohortChart = null;    // 留存 cohort（ECharts 渲染，schema.cohort 驱动）
+var REGIONFILTER = {};   // 地图联动：地区列 -> 选中的原值（如 {prov:'四川省', city:'成都市'}）
+var GEOREADY = false;    // 是否存在真实地图
+var CHARTTYPE = 'barh';        // 维度图样式：barv 竖柱 / barh 横柱 / area 面积 / line 曲线
+var REGIONPATH = [];           // 地区钻取路径（每级选中的名称）
+var COLORS = (window.THEME && window.THEME.palette) ? window.THEME.palette : ['#5b7fff','#40bfb0','#d4a84b','#e88d5a','#e8767a','#6688cc','#b8934a','#8a7cc0','#5aa88a','#c07a58','#3f8b9e','#98ad4a','#d47a8a','#6b7fbf'];
+var REGIONLABEL = {'prov':'省','city':'市','county':'县','dist':'区','region':'地区'};
+
+/* ========== 解锁 ========== */
+function doUnlock(){
+  var pw = document.getElementById('pw').value;
+  if(!pw) return;
+  var btn=document.getElementById('btn'), err=document.getElementById('err'),
+      bar=document.getElementById('bar'), fill=document.getElementById('barfill');
+  btn.disabled=true; btn.textContent='解密中…'; err.textContent=''; bar.classList.add('on');
+  var tries = [PAYLOAD];
+  if(PAYLOAD_VIEWER) tries.push(PAYLOAD_VIEWER);   // 主密码失败 → 尝试访客密码（分级权限）
+  var idx = 0;
+  (function next(){
+    if(idx >= tries.length){
+      btn.disabled=false; btn.textContent='解 锁'; bar.classList.remove('on'); fill.style.width='0';
+      var el=document.getElementById('pw'); el.classList.add('shake'); el.value=''; el.focus();
+      err.textContent='密码错误，请重试';
+      setTimeout(function(){el.classList.remove('shake')},420);
+      return;
+    }
+    var cur = idx++;
+    SVS.unlock(tries[cur], pw, function(p){ fill.style.width=(p*100).toFixed(0)+'%'; })
+      .then(function(txt){
+        D = JSON.parse(txt);
+        VIEWER_MODE = (cur === 1);   // 用访客密码解开的 → 访客视图
+        document.getElementById('lock').classList.add('hide');
+        document.getElementById('app').style.display='block';
+        init();
+      })
+      .catch(function(){ next(); });
+  })();
+}
+
+/* ========== 启动 ========== */
+if(!LOCKED){
+  /* 免密码直开模式：数据已脱敏，直接载入 */
+  D = PAYLOAD;
+  document.getElementById('lock').classList.add('hide');
+  document.getElementById('app').style.display='block';
+  document.getElementById('relock').style.display='none';
+  init();
+} else {
+  document.getElementById('btn').addEventListener('click', doUnlock);
+  document.getElementById('pw').addEventListener('keydown', function(e){ if(e.key==='Enter') doUnlock(); });
+  document.getElementById('relock').addEventListener('click', function(){
+    D=null; for(var k in CH){ if(CH[k]) CH[k].destroy(); } CH={};
+    if(geoChart){ geoChart.dispose(); geoChart=null; } GEO=null;
+    if(funnelChart){ funnelChart.dispose(); funnelChart=null; } FUNNEL=null;
+    if(heatmapChart){ heatmapChart.dispose(); heatmapChart=null; } HEATMAP=null;
+    if(sankeyChart){ sankeyChart.dispose(); sankeyChart=null; } SANKEY=null;
+    if(radarChart){ radarChart.dispose(); radarChart=null; } RADAR=null;
+    if(gaugeChart){ gaugeChart.dispose(); gaugeChart=null; } GAUGE=null;
+    if(treemapChart){ treemapChart.dispose(); treemapChart=null; } TREEMAP=null;
+    if(topoChart){ topoChart.dispose(); topoChart=null; } TOPO=null;
+    if(cohortChart){ cohortChart.dispose(); cohortChart=null; } COHORT=null;
+    document.getElementById('app').style.display='none';
+    document.getElementById('lock').classList.remove('hide');
+    document.getElementById('btn').disabled=false; document.getElementById('btn').textContent='解 锁';
+    document.getElementById('bar').classList.remove('on'); document.getElementById('barfill').style.width='0';
+    document.getElementById('pw').value=''; document.getElementById('pw').focus();
+  });
+  setTimeout(function(){ var i=document.getElementById('pw'); if(i) i.focus(); }, 300);
+}
+
+/* ========== 导出 PNG（P1：遍历所有图表实例逐个下载） ========== */
+function exportAllPng(){
+  var items = [];
+  var names = {geo:'地图',funnel:'漏斗',heatmap:'热力',sankey:'桑基',radar:'雷达',
+               gauge:'仪表盘',treemap:'树图',topology:'拓扑',cohort:'留存矩阵'};
+  var echartsInsts = [['geo',geoChart],['funnel',funnelChart],['heatmap',heatmapChart],
+    ['sankey',sankeyChart],['radar',radarChart],['gauge',gaugeChart],['treemap',treemapChart],
+    ['topology',topoChart],['cohort',cohortChart]];
+  echartsInsts.forEach(function(p){ if(p[1]) items.push([names[p[0]]||p[0], p[1]]); });
+  Object.keys(CH).forEach(function(k){ if(CH[k]) items.push([k, CH[k]]); });
+  if(!items.length){ alert('暂无可导出的图表'); return; }
+  var bg = getComputedStyle(document.body).backgroundColor;
+  if(!bg || bg==='transparent' || bg==='rgba(0, 0, 0, 0)') bg='#fff';
+  items.forEach(function(it, idx){
+    var inst = it[1], url = null;
+    if(inst.getDataURL){ try{ url = inst.getDataURL({pixelRatio:2, backgroundColor: bg}); }catch(e){} }
+    else if(inst.toBase64Image){ try{ url = inst.toBase64Image(); }catch(e){} }
+    if(!url) return;
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = ('看板-' + it[0] + '-' + (idx+1) + '.png').replace(/[\/\\:*?"<>|]/g,'_');
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  });
+}
+document.getElementById('exportPng').addEventListener('click', exportAllPng);
+
+/* ========== 工具 ========== */
+function sum(a){var s=0;for(var i=0;i<a.length;i++)s+=a[i];return s}
+function money(v){return '¥'+Math.round(v).toLocaleString()}
+function shortMoney(v){ if(v>=10000) return (v/10000).toFixed(1)+'万'; return Math.round(v).toLocaleString(); }
+function months(){var m={};D.rows.forEach(function(r){m[r.d.substr(0,7)]=1});return Object.keys(m).sort()}
+function mLabel(m){return m.substr(5,2).replace(/^0/,'')+'月'}
+
+function baseRows(){
+  var rows = D.rows;
+  if(VIEW!=='all' && VIEW!=='cmp') rows = rows.filter(function(r){return r.d.substr(0,7)===VIEW});
+  return rows;
+}
+function applyFilters(rows){
+  var f = {};
+  Object.keys(FILTERS).forEach(function(k){ f[k]=FILTERS[k]; });
+  if(typeof REGIONFILTER==='object'){ Object.keys(REGIONFILTER).forEach(function(k){ if(f[k]===undefined) f[k]=REGIONFILTER[k]; }); }
+  var keys = Object.keys(f);
+  if(!keys.length) return rows;
+  return rows.filter(function(r){
+    for(var i=0;i<keys.length;i++){ if(r[keys[i]]!==f[keys[i]]) return false; }
+    return true;
+  });
+}
+function curRows(){ return applyFilters(baseRows()); }
+function groupBy(rows,key){
+  var m={};
+  rows.forEach(function(r){var k=r[key]||'未填写'; if(!m[k])m[k]={a:0,c:0}; m[k].a+=r.a; m[k].c++;});
+  var out=[]; for(var k in m) out.push({k:k,a:m[k].a,c:m[k].c});
+  return out.sort(function(x,y){return y.a-x.a});
+}
+
+/* ========== 地区钻取 ========== */
+function regionKeys(){ return (D.meta && D.meta.regionKeys) || []; }
+function regionMaxDepth(){
+  var rk = regionKeys(); if(!rk.length) return 0;
+  if(rk.length===1){
+    var mx=0; curRegionRows().forEach(function(r){ var p=String(r[rk[0]]||'').split('/'); if(p.length>mx) mx=p.length; });
+    return mx;
+  }
+  return rk.length;
+}
+function regionValue(r, lvl){
+  var rk = regionKeys();
+  if(!rk.length) return '未填';
+  if(rk.length===1){ var parts=String(r[rk[0]]||'').split('/'); return parts[lvl]||'未填'; }
+  return r[rk[lvl]]||'未填';
+}
+function curRegionRows(){
+  var rk = regionKeys(); if(!rk.length) return [];
+  return curRows().filter(function(r){
+    for(var i=0;i<REGIONPATH.length;i++){ if(regionValue(r,i)!==REGIONPATH[i]) return false; }
+    return true;
+  });
+}
+function regionChildren(){
+  var lvl = REGIONPATH.length;
+  var rows = curRegionRows();
+  var m={};
+  rows.forEach(function(r){
+    var v = regionValue(r, lvl);
+    if(!m[v]) m[v]={a:0,c:0};
+    m[v].a += r.a; m[v].c++;
+  });
+  var out = Object.keys(m).map(function(k){return {k:k,a:m[k].a,c:m[k].c};});
+  out.sort(function(x,y){return y.a-x.a});
+  return out;
+}
+function colorFor(name){
+  var h=0; for(var i=0;i<name.length;i++) h=(h*31 + name.charCodeAt(i))>>>0;
+  return COLORS[h % COLORS.length];
+}
+function drawRegion(){
+  var rk = regionKeys(); if(!rk.length) return;
+  var card = document.getElementById('regionCard'); if(!card) return;
+  var children = regionChildren();
+  var maxDepth = regionMaxDepth();
+  var canDrill = REGIONPATH.length < maxDepth;
+
+  // 面包屑
+  var crumb = document.getElementById('regionCrumb');
+  var html = '<span class="rc'+(REGIONPATH.length===0?' cur':'')+'" data-l="-1">全部</span>';
+  REGIONPATH.forEach(function(p,i){
+    html += ' <span class="rsep">›</span> <span class="rc'+(i===REGIONPATH.length-1?' cur':'')+'" data-l="'+i+'">'+p+'</span>';
+  });
+  crumb.innerHTML = html;
+  crumb.querySelectorAll('.rc').forEach(function(el){
+    el.onclick = function(){
+      var l = parseInt(el.getAttribute('data-l'),10);
+      REGIONPATH = (l<0) ? [] : REGIONPATH.slice(0, l+1);
+      SHOWN=60; render();
+    };
+  });
+
+  document.getElementById('regionHint').textContent = canDrill ? '点击柱条下钻到下一级' : '已到最末级（点击面包屑返回）';
+
+  var labels = children.map(function(x){return x.k});
+  var vals = children.map(function(x){return x.a});
+  var el = document.getElementById('cRegion'); if(CH.region) CH.region.destroy();
+  var box = document.getElementById('cvbox_region');
+  box.style.height = Math.max(200, labels.length*30+50)+'px';
+  CH.region = new Chart(el, {
+    type:'bar',
+    data:{labels:labels, datasets:[{data:vals, backgroundColor:labels.map(colorFor), borderRadius:5, barThickness:labels.length>8?11:18}]},
+    options:Object.assign({},BASEOPT,{
+      indexAxis:'y',
+      onClick:function(evt,els){
+        if(!els.length || !canDrill) return;
+        REGIONPATH.push(labels[els[0].index]); SHOWN=60; render();
+      },
+      plugins:{legend:{display:false},tooltip:{backgroundColor:'rgba(11,18,25,.94)',titleColor:'#8899b0',bodyColor:'#c8d6e5',padding:10,cornerRadius:8,displayColors:false,
+        callbacks:{label:function(c){var it=children[c.dataIndex];return [money(it.a), it.c+' 笔 · 均 '+money(it.a/it.c)]}}}},
+      scales:{x:Object.assign(axis(),{beginAtZero:true,ticks:{color:'#6b8299',font:{size:9},callback:function(v){return shortMoney(v)}}}),
+              y:{grid:{display:false},ticks:{color:'#8899b0',font:{size:10}}}}
+    })
+  });
+
+  // 色块图例
+  var lg = document.getElementById('regionLegend');
+  lg.innerHTML = labels.map(function(l){ return '<span class="lg"><i style="background:'+colorFor(l)+'"></i>'+l+'</span>'; }).join('');
+}
+
+/* ========== 人物画像（厕所标识风格） ========== */
+function genderFigure(type, color){
+  if(type === '女'){
+    return '<svg viewBox="0 0 120 140" width="84" height="98" aria-label="女"><g fill="'+color+'">'
+      + '<circle cx="60" cy="22" r="15"/>'
+      // 连衣裙：肩窄(46-74) → 腰收进(52-68) → 裙摆外张(22-98)，三段清晰
+      + '<path d="M46 42 C43 50 49 58 52 72 C40 94 28 112 22 124 L98 124 C92 112 80 94 68 72 C71 58 77 50 74 42 Z"/>'
+      + '</g></svg>';
+  }
+  // 男（默认）
+  return '<svg viewBox="0 0 120 140" width="84" height="98" aria-label="男"><g fill="'+color+'">'
+    + '<circle cx="60" cy="22" r="15"/>'
+    + '<path d="M44 40 C44 40 32 52 30 76 L42 76 L46 54 L50 124 L58 124 L58 54 L62 54 L62 124 L70 124 L74 54 L78 76 L90 76 C88 52 76 40 60 40 Z"/>'
+    + '</g></svg>';
+}
+function drawGender(){
+  if(!(D.meta && D.meta.genderKey)) return;
+  var k = D.meta.genderKey, box = document.getElementById('genderIcons'); if(!box) return;
+  var rows = curRows(), m={};
+  rows.forEach(function(r){ var v=r[k]||'未填'; m[v]=(m[v]||0)+r.a; });
+  var palette = {'男':'#5b7fff','女':'#e8767a','其他':'#8a7cc0','未填':'#556b7f'};
+  var labels = Object.keys(m);
+  var total = labels.reduce(function(s,l){return s+m[l];},0);
+  // 主图标：男/女（有数据才显示）
+  var main = labels.filter(function(l){return l==='男'||l==='女';});
+  if(main.length===0) main = labels.slice(0,4);
+  var html = main.map(function(l){
+    var v=m[l], pct = total ? (v/total*100) : 0, color = palette[l]||colorFor(l);
+    return '<div style="flex:1;min-width:120px;text-align:center;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:14px 8px">'
+      + genderFigure(l, color)
+      + '<div style="color:#c8d6e5;font-size:15px;font-weight:600;margin-top:4px">'+l+'</div>'
+      + '<div style="color:'+color+';font-size:21px;font-weight:700;margin-top:2px">'+money(v)+'</div>'
+      + '<div style="color:#8899b0;font-size:12px;margin-top:1px">占比 '+pct.toFixed(1)+'%</div>'
+      + '<div style="height:6px;border-radius:4px;background:rgba(255,255,255,.08);margin-top:9px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:'+color+';border-radius:4px"></div></div>'
+      + '</div>';
+  }).join('');
+  // 其他/未填 等次要分类，小字汇总
+  var others = labels.filter(function(l){return main.indexOf(l)<0;});
+  if(others.length){
+    var ov = others.reduce(function(s,l){return s+m[l];},0);
+    html += '<div style="flex-basis:100%;text-align:center;color:#6b8299;font-size:12px;margin-top:8px">其他：'+others.join('、')+' · '+money(ov)+'（'+(total?(ov/total*100).toFixed(1):0)+'%）</div>';
+  }
+  box.innerHTML = html;
+}
+function drawAge(){
+  if(!(D.meta && D.meta.ageKey)) return;
+  var k = D.meta.ageKey, el = document.getElementById('cAge'); if(!el) return;
+  if(CH.age) CH.age.destroy();
+  var rows = curRows();
+  var buckets=[[0,17,'<18'],[18,25,'18-25'],[26,35,'26-35'],[36,45,'36-45'],[46,55,'46-55'],[56,200,'56+']];
+  var m = buckets.map(function(b){return {l:b[2],a:0,c:0}});
+  rows.forEach(function(r){
+    var v=parseFloat(r[k]); if(isNaN(v)) return;
+    for(var i=0;i<buckets.length;i++){ if(v>=buckets[i][0]&&v<=buckets[i][1]){m[i].a+=r.a; m[i].c++; break;} }
+  });
+  var labels=m.map(function(x){return x.l}), vals=m.map(function(x){return x.a});
+  CH.age = new Chart(el, {
+    type:'bar',
+    data:{labels:labels, datasets:[{data:vals, backgroundColor:COLORS, borderRadius:5, barThickness:labels.length>6?16:26}]},
+    options:Object.assign({},BASEOPT,{
+      plugins:{legend:{display:false},tooltip:{backgroundColor:'rgba(11,18,25,.94)',titleColor:'#8899b0',bodyColor:'#c8d6e5',padding:10,cornerRadius:8,displayColors:false,
+        callbacks:{label:function(c){var x=m[c.dataIndex];return [money(x.a), x.c+' 人']}}}},
+      scales:{x:{grid:{display:false},ticks:{color:'#6b8299',font:{size:10}}},
+              y:{beginAtZero:true,grid:{color:'rgba(255,255,255,.045)'},ticks:{color:'#6b8299',font:{size:9},callback:function(v){return shortMoney(v)}}}}
+    })
+  });
+}
+
+function drawFunnel(){
+  if(!FUNNEL) return;
+  if(typeof echarts==='undefined') return;
+  var el=document.getElementById('funnelMain'); if(!el) return;
+  if(funnelChart) funnelChart.dispose();
+  var rows=curRows();
+  var sk=FUNNEL.stageKey, meas=FUNNEL.measure||'count';
+  var order=(FUNNEL.stages&&FUNNEL.stages.length)?FUNNEL.stages:[];
+  var m={};
+  rows.forEach(function(r){
+    var v=r[sk]; if(v==null||v==='') return;
+    if(meas==='count') m[v]=(m[v]||0)+1;
+    else m[v]=(m[v]||0)+(parseFloat(r[meas])||0);
+  });
+  var names=order.slice();
+  Object.keys(m).forEach(function(k){ if(names.indexOf(k)<0) names.push(k); });
+  var data=names.filter(function(n){return m[n]!=null;}).map(function(n){return {name:n, value:m[n]};});
+  if(!data.length){ el.innerHTML='<div style="color:#6b8299;padding:30px 12px">当前筛选无漏斗数据</div>'; return; }
+  var maxv=Math.max.apply(null, data.map(function(d){return d.value;}));
+  funnelChart=echarts.init(el);
+  funnelChart.setOption({
+    tooltip:{trigger:'item', backgroundColor:'rgba(11,18,25,.94)', borderColor:'#1f2d3a', textStyle:{color:'#c8d6e5'},
+      formatter:function(p){ var u=(meas==='count')?' 条':''; return p.name+'：'+p.value+u+(maxv?('（'+(p.value/maxv*100).toFixed(1)+'%）'):''); }},
+    series:[{
+      type:'funnel', top:18, bottom:18, left:'10%', width:'80%',
+      min:0, max:maxv, minSize:'28%', maxSize:'100%',
+      sort:'none', gap:2,
+      label:{show:true, position:'inside', color:'#fff', fontSize:12, formatter:function(p){ return p.name+' '+(meas==='count'?p.value:shortMoney(p.value)); }},
+      labelLine:{show:false},
+      itemStyle:{borderColor:'#0b1219', borderWidth:1, opacity:0.92},
+      emphasis:{label:{fontSize:13, fontWeight:'bold'}},
+      data:data
+    }]
+  });
+}
+
+function drawHeatmap(){
+  if(!HEATMAP) return;
+  if(typeof echarts==='undefined') return;
+  var el=document.getElementById('heatmapMain'); if(!el) return;
+  if(heatmapChart) heatmapChart.dispose();
+  var rows=curRows();
+  var rk=HEATMAP.rowKey, ck=HEATMAP.colKey, meas=HEATMAP.measure||'a';
+  if(!rk || !ck){ el.innerHTML='<div style="color:#6b8299;padding:30px 12px">热力图未配置 rowKey/colKey</div>'; return; }
+  var agg={}, rowSet={}, colSet={};
+  rows.forEach(function(r){
+    var rv=r[rk], cv=r[ck];
+    if(rv==null||rv===''||cv==null||cv==='') return;
+    rv=String(rv); cv=String(cv);
+    rowSet[rv]=1; colSet[cv]=1;
+    var key=rv+'||'+cv;
+    agg[key]=(agg[key]||0)+(parseFloat(r[meas])||0);
+  });
+  var rowsArr=Object.keys(rowSet);
+  var colsArr=Object.keys(colSet);
+  if(!rowsArr.length || !colsArr.length){ el.innerHTML='<div style="color:#6b8299;padding:30px 12px">当前筛选无热力图数据</div>'; return; }
+  // 行/列排序：数值优先排序，否则按首次出现
+  rowsArr.sort(); colsArr.sort();
+  var data=[], maxv=0;
+  for(var ri=0; ri<rowsArr.length; ri++){
+    for(var ci=0; ci<colsArr.length; ci++){
+      var v=agg[rowsArr[ri]+'||'+colsArr[ci]]||0;
+      if(v>maxv) maxv=v;
+      data.push([ci, ri, v]);
+    }
+  }
+  heatmapChart=echarts.init(el);
+  heatmapChart.setOption({
+    tooltip:{position:'top', backgroundColor:'rgba(11,18,25,.94)', borderColor:'#1f2d3a', textStyle:{color:'#c8d6e5'},
+      formatter:function(p){ return colsArr[p.value[0]]+' · '+rowsArr[p.value[1]]+'：'+money(p.value[2]); }},
+    grid:{left:90, right:18, top:14, bottom:70},
+    xAxis:{type:'category', data:colsArr, axisLabel:{color:'#9fb3c8', rotate: colsArr.length>4?35:0, fontSize:11}, axisLine:{lineStyle:{color:'#2a3a4a'}}, splitArea:{show:true}},
+    yAxis:{type:'category', data:rowsArr, axisLabel:{color:'#9fb3c8', fontSize:11}, axisLine:{lineStyle:{color:'#2a3a4a'}}, splitArea:{show:true}},
+    visualMap:{min:0, max:maxv||1, calculable:true, orient:'horizontal', left:'center', bottom:6, textStyle:{color:'#9fb3c8'},
+      inRange:{color:['#0e2a3a','#1d4e5c','#2f7d8c','#5aa8a0','#a8d18a','#e8c25a','#e8767a']}},
+    series:[{
+      type:'heatmap',
+      data:data,
+      label:{show: maxv>0, color:'#06121c', fontSize:10, formatter:function(p){ return p.value[2]>=1000?shortMoney(p.value[2]):p.value[2]; }},
+      itemStyle:{borderColor:'#0b1219', borderWidth:1},
+      emphasis:{itemStyle:{shadowBlur:8, shadowColor:'rgba(0,0,0,.5)'}}
+    }]
+  });
+}
+
+function drawSankey(){
+  if(!SANKEY) return;
+  if(typeof echarts==='undefined') return;
+  var el=document.getElementById('sankeyMain'); if(!el) return;
+  if(sankeyChart) sankeyChart.dispose();
+  var rows=curRows();
+  var sk=SANKEY.sourceKey, tk=SANKEY.targetKey, meas=SANKEY.measure||'a';
+  if(!sk || !tk){ el.innerHTML='<div style="color:#6b8299;padding:30px 12px">桑基图未配置 sourceKey/targetKey</div>'; return; }
+  var linkMap={}, nodeSet={};
+  rows.forEach(function(r){
+    var s=r[sk], t=r[tk];
+    if(s==null||s===''||t==null||t==='') return;
+    s=String(s); t=String(t);
+    nodeSet[s]=1; nodeSet[t]=1;
+    var key=s+'||'+t;
+    linkMap[key]=(linkMap[key]||0)+(parseFloat(r[meas])||0);
+  });
+  var nodeNames=Object.keys(nodeSet);
+  if(!nodeNames.length){ el.innerHTML='<div style="color:#6b8299;padding:30px 12px">当前筛选无桑基数据</div>'; return; }
+  // 节点配色：复用 colorFor 保证与维度图一致
+  var nm={};
+  nodeNames.forEach(function(n){ nm[n]=colorFor(n); });
+  var nodes=nodeNames.map(function(n){return {name:n, itemStyle:{color:nm[n]}};});
+  var links=Object.keys(linkMap).map(function(k){
+    var p=k.split('||');
+    return {source:p[0], target:p[1], value:linkMap[k], lineStyle:{color:nm[p[0]], opacity:0.4}};
+  });
+  sankeyChart=echarts.init(el);
+  sankeyChart.setOption({
+    tooltip:{trigger:'item', triggerOn:'mousemove', backgroundColor:'rgba(11,18,25,.94)', borderColor:'#1f2d3a', textStyle:{color:'#c8d6e5'},
+      formatter:function(p){ if(p.dataType==='edge') return p.data.source+' → '+p.data.target+'<br>'+money(p.data.value); return p.name; }},
+    series:[{
+      type:'sankey', top:14, bottom:14, left:14, right:120,
+      nodeWidth:16, nodeGap:13, draggable:false,
+      emphasis:{focus:'adjacency'},
+      label:{color:'#c8d6e5', fontSize:11, fontWeight:500},
+      labelLine:{lineStyle:{color:'#3f5163'}},
+      lineStyle:{color:'gradient', curveness:0.5, opacity:0.42},
+      data:nodes, links:links
+    }]
+  });
+}
+
+function drawRadar(){
+  if(!RADAR) return;
+  if(typeof echarts==='undefined') return;
+  var el=document.getElementById('radarMain'); if(!el) return;
+  if(radarChart) radarChart.dispose();
+  var rows=curRows();
+  var sk=RADAR.seriesKey, ak=RADAR.axisKey, meas=RADAR.measure||'a';
+  if(!sk || !ak){ el.innerHTML='<div style="color:#6b8299;padding:30px 12px">雷达图未配置 seriesKey/axisKey</div>'; return; }
+  var axisSet={}, seriesSet={}, agg={}, seriesTotals={};
+  rows.forEach(function(r){
+    var sv=r[sk], av=r[ak];
+    if(sv==null||sv===''||av==null||av==='') return;
+    sv=String(sv); av=String(av);
+    axisSet[av]=1; seriesSet[sv]=1;
+    var key=sv+'||'+av;
+    var v=(parseFloat(r[meas])||0);
+    agg[key]=(agg[key]||0)+v;
+  });
+  var axes=Object.keys(axisSet), seriesNames=Object.keys(seriesSet);
+  if(!axes.length || !seriesNames.length){ el.innerHTML='<div style="color:#6b8299;padding:30px 12px">当前筛选无雷达图数据</div>'; return; }
+  // series 过多时取金额合计 top6，避免线条堆叠看不清
+  seriesNames.forEach(function(s){ seriesTotals[s]=0; axes.forEach(function(a){ seriesTotals[s]+=agg[s+'||'+a]||0; }); });
+  seriesNames.sort(function(x,y){return seriesTotals[y]-seriesTotals[x];});
+  if(seriesNames.length>6) seriesNames=seriesNames.slice(0,6);
+  axes.sort();
+  // 每轴独立最大值（各维度量纲不同，必须独立归一，否则小值系列被压到中心）
+  var axisMax={};
+  axes.forEach(function(a){
+    var mx=0;
+    seriesNames.forEach(function(s){ var v=agg[s+'||'+a]||0; if(v>mx) mx=v; });
+    axisMax[a]=mx||1;
+  });
+  var indicator=axes.map(function(a){ return {name:a, max: axisMax[a]}; });
+  var palette={};
+  seriesNames.forEach(function(n){ palette[n]=colorFor(n); });
+  var data=seriesNames.map(function(s){
+    return {
+      name:s,
+      value: axes.map(function(a){ return Math.round(agg[s+'||'+a]||0); }),
+      lineStyle:{color:palette[s], width:2},
+      itemStyle:{color:palette[s]},
+      areaStyle:{color:palette[s], opacity:0.05}
+    };
+  });
+  radarChart=echarts.init(el);
+  radarChart.setOption({
+    tooltip:{backgroundColor:'rgba(11,18,25,.94)', borderColor:'#1f2d3a', textStyle:{color:'#c8d6e5'},
+      formatter:function(p){ if(!p.value) return p.name; var lines=['<b>'+p.name+'</b>']; axes.forEach(function(a,i){ lines.push(a+'：'+money(p.value[i])); }); return lines.join('<br>'); }},
+    legend:{data:seriesNames, top:2, type:'scroll', textStyle:{color:'#9fb3c8', fontSize:11}},
+    radar:{
+      indicator:indicator, center:['50%','56%'], radius:'64%',
+      axisName:{color:'#9fb3c8', fontSize:11},
+      splitLine:{lineStyle:{color:'rgba(255,255,255,.08)'}},
+      splitArea:{areaStyle:{color:['rgba(255,255,255,.015)','rgba(255,255,255,.04)']}},
+      axisLine:{lineStyle:{color:'rgba(255,255,255,.08)'}}
+    },
+    series:[{ type:'radar', data:data, symbolSize:4, emphasis:{lineStyle:{width:3}} }]
+  });
+}
+
+function drawGauge(){
+  if(!GAUGE) return;
+  if(typeof echarts==='undefined') return;
+  var el=document.getElementById('gaugeMain'); if(!el) return;
+  if(gaugeChart) gaugeChart.dispose();
+  var rows=curRows();
+  var meas=GAUGE.measure||'a';
+  var total=0; rows.forEach(function(r){ total+=(parseFloat(r[meas])||0); });
+  var target=GAUGE.target||0;
+  var pct = target>0 ? (total/target*100) : 0;
+  var color = pct>=100 ? '#40bfb0' : (pct>=70 ? '#5b7fff' : (pct>=40 ? '#d4a84b' : '#e8767a'));
+  gaugeChart=echarts.init(el);
+  gaugeChart.setOption({
+    tooltip:{backgroundColor:'rgba(11,18,25,.94)', borderColor:'#1f2d3a', textStyle:{color:'#c8d6e5'},
+      formatter:function(){ return (GAUGE.label||'当前合计')+'：'+money(total)+(target>0?(' / 目标 '+money(target)+'（'+pct.toFixed(1)+'%）'):''); }},
+    series:[{
+      type:'gauge', center:['50%','56%'], radius:'94%',
+      min:0, max: target>0 ? target : (total||100),
+      startAngle:210, endAngle:-30,
+      progress:{show:true, width:13, itemStyle:{color:color}},
+      axisLine:{lineStyle:{width:13, color:[[1,'rgba(255,255,255,.08)']]}},
+      axisTick:{show:false}, splitLine:{show:false}, axisLabel:{show:false},
+      pointer:{show:true, length:'58%', width:5, itemStyle:{color:color}},
+      anchor:{show:true, size:14, itemStyle:{color:color, borderColor:'#0b1219', borderWidth:2}},
+      title:{show:true, offsetCenter:[0,'80%'], color:'#8899b0', fontSize:12},
+      detail:{valueAnimation:true, offsetCenter:[0,'38%'], color:'#e8edf3', fontSize:27, fontWeight:'bold',
+        formatter:function(v){ return money(v); }},
+      data:[{value:total, name: (target>0 ? (GAUGE.label||'目标达成率')+' '+pct.toFixed(1)+'%' : (GAUGE.label||'当前合计'))}]
+    }]
+  });
+}
+
+function drawTreemap(){
+  if(!TREEMAP) return;
+  if(typeof echarts==='undefined') return;
+  var el=document.getElementById('treemapMain'); if(!el) return;
+  if(treemapChart) treemapChart.dispose();
+  var rows=curRows();
+  var keys=TREEMAP.keys||[];
+  var meas=TREEMAP.measure||'a';
+  if(!keys.length){ el.innerHTML='<div style="color:#6b8299;padding:30px 12px">树图未配置 keys</div>'; return; }
+  function nest(list, i){
+    if(i>=keys.length){
+      var s=0; list.forEach(function(r){ s+=(parseFloat(r[meas])||0); });
+      return s;
+    }
+    var m={};
+    list.forEach(function(r){ var k=r[keys[i]]||'未填写'; (m[k]=m[k]||[]).push(r); });
+    return Object.keys(m).sort().map(function(k){
+      var child=nest(m[k], i+1);
+      if(typeof child==='number') return {name:k, value:child, itemStyle:{color:colorFor(k)}};
+      return {name:k, itemStyle:{color:colorFor(k)}, children:child};
+    });
+  }
+  var data=nest(rows,0);
+  if(!data.length){ el.innerHTML='<div style="color:#6b8299;padding:30px 12px">当前筛选无树图数据</div>'; return; }
+  treemapChart=echarts.init(el);
+  treemapChart.setOption({
+    tooltip:{backgroundColor:'rgba(11,18,25,.94)', borderColor:'#1f2d3a', textStyle:{color:'#c8d6e5'},
+      formatter:function(p){ var v=p.value; if(typeof v==='object') v=p.data.value; return p.name+'：'+money(v); }},
+    series:[{
+      type:'treemap', roam:false, nodeClick:false, breadcrumb:{show:false},
+      width:'100%', height:'100%',
+      label:{show:true, color:'#fff', fontSize:11, formatter:'{b}'},
+      upperLabel:{show:true, height:20, color:'#c8d6e5', fontSize:11},
+      itemStyle:{borderColor:'#0b1219', borderWidth:1.5, gapWidth:1.5},
+      levels:[
+        {itemStyle:{borderColor:'#0b1219',borderWidth:2,gapWidth:2}},
+        {itemStyle:{borderColor:'rgba(11,18,25,.8)',borderWidth:1,gapWidth:1}}
+      ],
+      data:data
+    }]
+  });
+}
+
+function drawTopology(){
+  if(!TOPO) return;
+  if(typeof echarts==='undefined') return;
+  var el=document.getElementById('topoMain'); if(!el) return;
+  if(topoChart) topoChart.dispose();
+  var rows=curRows();
+  var sk=TOPO.sourceKey, tk=TOPO.targetKey, meas=TOPO.measure||'a';
+  if(!sk||!tk){ el.innerHTML='<div style="color:#6b8299;padding:30px 12px">拓扑图未配置 sourceKey/targetKey</div>'; return; }
+  var linkMap={}, nodeSet={}, degree={};
+  rows.forEach(function(r){
+    var s=r[sk], t=r[tk];
+    if(s==null||s===''||t==null||t==='') return;
+    s=String(s); t=String(t);
+    nodeSet[s]=1; nodeSet[t]=1;
+    degree[s]=(degree[s]||0)+1; degree[t]=(degree[t]||0)+1;
+    var key=s+'||'+t; linkMap[key]=(linkMap[key]||0)+(parseFloat(r[meas])||0);
+  });
+  var nodeNames=Object.keys(nodeSet);
+  if(!nodeNames.length){ el.innerHTML='<div style="color:#6b8299;padding:30px 12px">当前筛选无拓扑数据</div>'; return; }
+  var nm={};
+  nodeNames.forEach(function(n){ nm[n]=colorFor(n); });
+  var nodes=nodeNames.map(function(n){
+    var deg=degree[n]||1;
+    return {name:n, symbolSize: 16 + Math.min(deg,12)*2.2, itemStyle:{color:nm[n], borderColor:'#0b1219', borderWidth:1.5}};
+  });
+  var links=Object.keys(linkMap).map(function(k){
+    var p=k.split('||');
+    return {source:p[0], target:p[1], value:linkMap[k], lineStyle:{color:nm[p[0]], opacity:0.42, width:Math.max(1, Math.min(6, linkMap[k]/30000))}};
+  });
+  topoChart=echarts.init(el);
+  topoChart.setOption({
+    tooltip:{trigger:'item', backgroundColor:'rgba(11,18,25,.94)', borderColor:'#1f2d3a', textStyle:{color:'#c8d6e5'},
+      formatter:function(p){ if(p.dataType==='edge') return p.data.source+' → '+p.data.target+'<br>'+money(p.data.value);
+        return p.name+'：'+(degree[p.name]||0)+' 条关联'; }},
+    series:[{
+      type:'graph', layout:'force', roam:true, draggable:true,
+      force:{repulsion:170, edgeLength:[60,130], gravity:0.08},
+      label:{show:true, color:'#c8d6e5', fontSize:11, fontWeight:500},
+      lineStyle:{curveness:0.12},
+      emphasis:{focus:'adjacency', label:{fontWeight:'bold'}},
+      data:nodes, links:links
+    }]
+  });
+}
+
+function drawCohort(){
+  if(!COHORT) return;
+  if(typeof echarts==='undefined') return;
+  var el=document.getElementById('cohortMain'); if(!el) return;
+  if(cohortChart) cohortChart.dispose();
+  var rows=curRows();
+  var gk=COHORT.groupKey, sk=COHORT.stepKey, meas=COHORT.measure||'a';
+  if(!gk||!sk){ el.innerHTML='<div style="color:#6b8299;padding:30px 12px">留存矩阵未配置 groupKey/stepKey</div>'; return; }
+  var agg={}, gSet={}, sSet={};
+  rows.forEach(function(r){
+    var g=r[gk], s=r[sk];
+    if(g==null||g===''||s==null||s==='') return;
+    g=String(g); s=String(s);
+    gSet[g]=1; sSet[s]=1;
+    var key=g+'||'+s; agg[key]=(agg[key]||0)+(parseFloat(r[meas])||0);
+  });
+  var groups=Object.keys(gSet).sort(), steps=Object.keys(sSet).sort();
+  if(!groups.length||!steps.length){ el.innerHTML='<div style="color:#6b8299;padding:30px 12px">当前筛选无留存数据</div>'; return; }
+  // 行归一：每行最大值=100%，突出每组在各阶段的留存/转化构成
+  var data=[];
+  groups.forEach(function(g, gi){
+    var rowMax=0;
+    steps.forEach(function(s){ var v=agg[g+'||'+s]||0; if(v>rowMax) rowMax=v; });
+    steps.forEach(function(s, si){
+      var v=agg[g+'||'+s]||0;
+      var pct= rowMax ? (v/rowMax*100) : 0;
+      data.push([si, gi, Math.round(v), +pct.toFixed(1)]);
+    });
+  });
+  cohortChart=echarts.init(el);
+  cohortChart.setOption({
+    tooltip:{position:'top', backgroundColor:'rgba(11,18,25,.94)', borderColor:'#1f2d3a', textStyle:{color:'#c8d6e5'},
+      formatter:function(p){ return groups[p.value[1]]+' · '+steps[p.value[0]]+'<br>'+money(p.value[2])+'（该组峰值 '+p.value[3]+'%）'; }},
+    grid:{left:96, right:20, top:14, bottom:64},
+    xAxis:{type:'category', data:steps, axisLabel:{color:'#9fb3c8', rotate: steps.length>4?35:0, fontSize:11}, axisLine:{lineStyle:{color:'#2a3a4a'}}, splitArea:{show:true}},
+    yAxis:{type:'category', data:groups, axisLabel:{color:'#9fb3c8', fontSize:11}, axisLine:{lineStyle:{color:'#2a3a4a'}}, splitArea:{show:true}},
+    visualMap:{min:0, max:100, calculable:true, orient:'horizontal', left:'center', bottom:6, textStyle:{color:'#9fb3c8'},
+      inRange:{color:['#0e2a3a','#1d4e5c','#2f7d8c','#5aa8a0','#a8d18a','#e8c25a','#e8767a']}},
+    series:[{
+      type:'heatmap',
+      data:data.map(function(d){ return [d[0], d[1], d[3]]; }),
+      label:{show:true, color:'#06121c', fontSize:10, formatter:function(p){ var d=data[p.dataIndex]; return shortMoney(d[2]); }},
+      itemStyle:{borderColor:'#0b1219', borderWidth:1},
+      emphasis:{itemStyle:{shadowBlur:8, shadowColor:'rgba(0,0,0,.5)'}}
+    }]
+  });
+}
+
+/* ========== 渲染 ========== */
+function init(){
+  document.getElementById('tTitle').innerHTML = D.title
+    + (VIEWER_MODE ? '<span class="badge" style="background:rgba(255,184,108,.15);color:#ffb86c">访客视图 · 部分数据</span>' : '')
+    + (D.level&&D.level!=='L0' ? '<span class="badge">已脱敏 '+D.level+'</span>' : '');
+  document.getElementById('tSub').textContent = (D.subtitle||'') + ' · 生成于 ' + D.generated;
+  document.getElementById('kl1').textContent = D.amountLabel || '金额';
+  document.getElementById('kl4').textContent = D.qtyLabel || '数量';
+  document.getElementById('foot').innerHTML = '共 '+D.rows.length+' 条记录 · 数据已脱敏，仅供内部管理决策使用<br>请勿转发截图至外部渠道';
+
+  CHARTTYPE = D.defaultChart || 'barh';
+  REGIONPATH = [];
+
+  var ms = months();
+  var pb = document.getElementById('periodBtns'), h='';
+  h += '<button class="b on" data-v="all">全部<span class="m">'+ms.length+'个月</span></button>';
+  if(ms.length>1) h += '<button class="b" data-v="cmp">环比对比<span class="m">最近'+Math.min(3,ms.length)+'期</span></button>';
+  ms.forEach(function(m){
+    var r=D.rows.filter(function(x){return x.d.substr(0,7)===m});
+    h += '<button class="b" data-v="'+m+'">'+mLabel(m)+'<span class="m">'+r.length+'笔·'+shortMoney(sum(r.map(function(x){return x.a})))+'</span></button>';
+  });
+  pb.innerHTML=h;
+  if(!BOUND) pb.addEventListener('click', function(e){
+    var b=e.target.closest('.b'); if(!b) return;
+    pb.querySelectorAll('.b').forEach(function(x){x.classList.remove('on')});
+    b.classList.add('on'); VIEW=b.getAttribute('data-v'); SHOWN=60; render();
+  });
+
+  // 快捷筛选：第一个维度的取值
+  var fd = D.filterDim || (D.dims[0] && D.dims[0].key);
+  if(fd){
+    var vals = groupBy(D.rows, fd).slice(0,6);
+    var qb=document.getElementById('quickBtns'), q='<button class="b on" data-k="" data-v="">全部</button>';
+    vals.forEach(function(v){ q += '<button class="b" data-k="'+fd+'" data-v="'+v.k+'">'+v.k+'</button>'; });
+    qb.innerHTML=q;
+    if(!BOUND) qb.addEventListener('click', function(e){
+      var b=e.target.closest('.b'); if(!b) return;
+      qb.querySelectorAll('.b').forEach(function(x){x.classList.remove('on')});
+      b.classList.add('on');
+      var k=b.getAttribute('data-k');
+      if(!k) delete FILTERS[fd]; else FILTERS[k]=b.getAttribute('data-v');
+      SHOWN=60; render();
+    });
+  }
+
+  // 图表样式切换
+  var ctb=document.getElementById('chartTypeBtns');
+  if(D.dims.length){
+    ctb.style.display='flex';
+    var cts=[['barh','横向','默认'],['barv','柱状','竖向'],['area','面积','折线填充'],['line','曲线','折线']];
+    var ch='';
+    cts.forEach(function(c){ ch+='<button class="b'+(c[0]===CHARTTYPE?' on':'')+'" data-ct="'+c[0]+'">'+c[1]+'<span class="m">'+c[2]+'</span></button>'; });
+    ctb.innerHTML=ch;
+    if(!BOUND) ctb.addEventListener('click', function(e){
+      var b=e.target.closest('.b'); if(!b) return;
+      ctb.querySelectorAll('.b').forEach(function(x){x.classList.remove('on')});
+      b.classList.add('on'); CHARTTYPE=b.getAttribute('data-ct'); SHOWN=60; render();
+    });
+  } else { ctb.style.display='none'; }
+
+  // 维度图表卡片
+  var dg=document.getElementById('dimGrid'), g='';
+  D.dims.forEach(function(d){
+    g += '<div class="card"><div class="ct"><span>'+d.label+' · 排行</span><span class="hint">点击可筛选</span></div>'+
+         '<div class="cv" id="cvbox_'+d.key+'"><canvas id="c_'+d.key+'"></canvas></div></div>';
+  });
+  dg.innerHTML=g;
+
+  // 地区钻取 + 人物画像卡片（schema 驱动：面板显隐 / 顺序 / 标签，零代码适配行业）
+  GEO = (D && D.geo) ? D.geo : null;
+  var eg=document.getElementById('extraGrid'), egh='';
+  var hasR = regionKeys().length>0;
+  var geoReady = !!(GEO && GEO.root && GEO.geoJSONs && GEO.geoJSONs['100000']);
+  GEOREADY = geoReady;
+  var hasG = !!(D.meta && D.meta.genderKey), hasA = !!(D.meta && D.meta.ageKey);
+  var SCH = (D && D.schema) ? D.schema : null;
+  var L = (SCH && SCH.labels) ? SCH.labels : {};
+  FUNNEL = (SCH && SCH.funnel) ? SCH.funnel : null;
+  HEATMAP = (SCH && SCH.heatmap) ? SCH.heatmap : null;
+  SANKEY = (SCH && SCH.sankey) ? SCH.sankey : null;
+  RADAR = (SCH && SCH.radar) ? SCH.radar : null;
+  GAUGE = (SCH && SCH.gauge) ? SCH.gauge : null;
+  TREEMAP = (SCH && SCH.treemap) ? SCH.treemap : null;
+  TOPO = (SCH && SCH.topology) ? SCH.topology : null;
+  COHORT = (SCH && SCH.cohort) ? SCH.cohort : null;
+  function LB(k,def){ return (L[k]!=null) ? L[k] : def; }
+  var PANELS = (SCH && Array.isArray(SCH.panels)) ? SCH.panels : ['geo','gender','age','table'];
+  PANELS.forEach(function(p){
+    if(p==='geo'){
+      if(geoReady) egh += '<div class="card" id="geoMapCard" style="margin-bottom:12px"><div class="ct"><span>'+LB('geo','地区分布')+' · 真实地图</span><span class="hint" id="geoHint">颜色越深=金额越高 · 点击区域下钻并联动筛选其它面板</span></div>'+
+        '<div class="chips" id="geoCrumb" style="margin-top:0;margin-bottom:10px"></div>'+
+        '<div class="cv" id="cvbox_geo" style="height:460px;min-height:360px"><div id="geoMain" style="width:100%;height:100%"></div></div>'+
+        '<div class="legend" id="geoLegend"></div></div>';
+      else if(hasR) egh += '<div class="card" id="regionCard" style="margin-bottom:12px"><div class="ct"><span>'+LB('geo','地区分布')+'</span><span class="hint" id="regionHint">点击柱条下钻</span></div>'+
+        '<div class="chips" id="regionCrumb" style="margin-top:0;margin-bottom:10px"></div>'+
+        '<div class="cv" id="cvbox_region" style="height:240px"><canvas id="cRegion"></canvas></div>'+
+        '<div class="legend" id="regionLegend"></div></div>';
+    } else if(p==='gender' && hasG){
+      egh += '<div class="card" style="margin-bottom:12px"><div class="ct"><span>'+LB('gender','男女比例')+'</span><span class="hint">人物画像</span></div><div id="genderIcons" style="display:flex;flex-wrap:wrap;gap:14px;padding:12px 6px;justify-content:space-around"></div></div>';
+    } else if(p==='age' && hasA){
+      egh += '<div class="card" style="margin-bottom:12px"><div class="ct"><span>'+LB('age','年龄结构')+'</span><span class="hint">人物画像</span></div><div class="cv" style="height:200px"><canvas id="cAge"></canvas></div></div>';
+    } else if(p==='funnel' && FUNNEL){
+      var fTitle = FUNNEL.title || '转化漏斗';
+      egh += '<div class="card" id="funnelCard" style="margin-bottom:12px"><div class="ct"><span>'+fTitle+'</span><span class="hint" id="funnelHint">阶段由多到少 · 随筛选联动</span></div>'+
+        '<div class="cv" id="cvbox_funnel" style="height:340px;min-height:280px"><div id="funnelMain" style="width:100%;height:100%"></div></div></div>';
+      window.addEventListener('resize', function(){ if(funnelChart) funnelChart.resize(); });
+    } else if(p==='heatmap' && HEATMAP){
+      var hTitle = HEATMAP.title || '热力图';
+      egh += '<div class="card" id="heatmapCard" style="margin-bottom:12px"><div class="ct"><span>'+hTitle+'</span><span class="hint" id="heatmapHint">颜色越深=数值越高 · 随筛选联动</span></div>'+
+        '<div class="cv" id="cvbox_heatmap" style="height:360px;min-height:300px"><div id="heatmapMain" style="width:100%;height:100%"></div></div></div>';
+      window.addEventListener('resize', function(){ if(heatmapChart) heatmapChart.resize(); });
+    } else if(p==='sankey' && SANKEY){
+      var skTitle = SANKEY.title || '流向桑基图';
+      egh += '<div class="card" id="sankeyCard" style="margin-bottom:12px"><div class="ct"><span>'+skTitle+'</span><span class="hint" id="sankeyHint">宽度=流量大小 · 随筛选联动重算</span></div>'+
+        '<div class="cv" id="cvbox_sankey" style="height:380px;min-height:300px"><div id="sankeyMain" style="width:100%;height:100%"></div></div></div>';
+      window.addEventListener('resize', function(){ if(sankeyChart) sankeyChart.resize(); });
+    } else if(p==='radar' && RADAR){
+      var rTitle = RADAR.title || '多维对比雷达';
+      egh += '<div class="card" id="radarCard" style="margin-bottom:12px"><div class="ct"><span>'+rTitle+'</span><span class="hint" id="radarHint">每条线=一个'+RADAR.seriesLabel+(RADAR.axisLabel?(' · 轴='+RADAR.axisLabel):'')+' · 随筛选联动重算</span></div>'+
+        '<div class="cv" id="cvbox_radar" style="height:380px;min-height:320px"><div id="radarMain" style="width:100%;height:100%"></div></div></div>';
+      window.addEventListener('resize', function(){ if(radarChart) radarChart.resize(); });
+    } else if(p==='gauge' && GAUGE){
+      var gTitle = GAUGE.title || '目标达成率';
+      egh += '<div class="card" id="gaugeCard" style="margin-bottom:12px"><div class="ct"><span>'+gTitle+'</span><span class="hint" id="gaugeHint">当前合计 / 目标 · 随筛选联动</span></div>'+
+        '<div class="cv" id="cvbox_gauge" style="height:260px;min-height:220px"><div id="gaugeMain" style="width:100%;height:100%"></div></div></div>';
+      window.addEventListener('resize', function(){ if(gaugeChart) gaugeChart.resize(); });
+    } else if(p==='treemap' && TREEMAP){
+      var tTitle = TREEMAP.title || '层级占比树图';
+      egh += '<div class="card" id="treemapCard" style="margin-bottom:12px"><div class="ct"><span>'+tTitle+'</span><span class="hint" id="treemapHint">面积=金额 · 层级钻取 · 随筛选联动</span></div>'+
+        '<div class="cv" id="cvbox_treemap" style="height:360px;min-height:300px"><div id="treemapMain" style="width:100%;height:100%"></div></div></div>';
+      window.addEventListener('resize', function(){ if(treemapChart) treemapChart.resize(); });
+    } else if(p==='topology' && TOPO){
+      var oTitle = TOPO.title || '关系拓扑图';
+      egh += '<div class="card" id="topoCard" style="margin-bottom:12px"><div class="ct"><span>'+oTitle+'</span><span class="hint" id="topoHint">节点=实体 · 连线=关系 · 随筛选联动</span></div>'+
+        '<div class="cv" id="cvbox_topo" style="height:380px;min-height:320px"><div id="topoMain" style="width:100%;height:100%"></div></div></div>';
+      window.addEventListener('resize', function(){ if(topoChart) topoChart.resize(); });
+    } else if(p==='cohort' && COHORT){
+      var cohTitle = COHORT.title || '转化留存矩阵';
+      egh += '<div class="card" id="cohortCard" style="margin-bottom:12px"><div class="ct"><span>'+cohTitle+'</span><span class="hint" id="cohortHint">行=分组 · 列=阶段 · 色深=该组峰值占比 · 随筛选联动</span></div>'+
+        '<div class="cv" id="cvbox_cohort" style="height:340px;min-height:280px"><div id="cohortMain" style="width:100%;height:100%"></div></div></div>';
+      window.addEventListener('resize', function(){ if(cohortChart) cohortChart.resize(); });
+    }
+  });
+  eg.innerHTML=egh;
+  var tc=document.getElementById('tableCard'); if(tc) tc.style.display = (PANELS.indexOf('table')>=0) ? '' : 'none';
+  if(geoReady && PANELS.indexOf('geo')>=0) initGeo();
+
+  if(!BOUND){
+    document.getElementById('q').addEventListener('input', function(){ QUERY=this.value.trim(); SHOWN=60; renderTable(); });
+    document.getElementById('more').addEventListener('click', function(){ SHOWN+=100; renderTable(); });
+    BOUND = true;
+  }
+  VIEW='all'; FILTERS={}; SHOWN=60; QUERY=''; document.getElementById('q').value='';
+  window.scrollTo(0,0);
+  render();
+  addAria();
+}
+
+/* ========== 无障碍（P1：图表容器 role/aria-label） ========== */
+function addAria(){
+  document.querySelectorAll('.card').forEach(function(c){
+    var t = c.querySelector('.ct span');
+    if(t && !c.getAttribute('aria-label')) c.setAttribute('aria-label', t.textContent);
+    if(!c.hasAttribute('role')) c.setAttribute('role', 'img');
+  });
+}
+
+/* ========== 图表点击联动（P2：点击任意图表 → 设置筛选 → 全盘重算） ========== */
+function bindChartClicks(){
+  function toggle(key, v){
+    if(v==null || v==='') return;
+    if(FILTERS[key]===v) delete FILTERS[key]; else FILTERS[key]=v;
+    renderChips(); render();
+  }
+  function bind(chart, handler){
+    if(!chart) return;
+    chart.off('click');          // 图表每次渲染会重建实例，先解绑防重复
+    chart.on('click', handler);
+  }
+  if(funnelChart && FUNNEL) bind(funnelChart, function(p){ if(p&&p.name) toggle(FUNNEL.stageKey, p.name); });
+  if(heatmapChart && HEATMAP) bind(heatmapChart, function(p){
+    if(!p||!p.value) return;
+    var opt=heatmapChart.getOption(), hx=opt.xAxis[0].data, hy=opt.yAxis[0].data;
+    var rv=hy[p.value[1]], cv=hx[p.value[0]];
+    if(rv!=null && HEATMAP.rowKey) toggle(HEATMAP.rowKey, rv);
+    if(cv!=null && HEATMAP.colKey) toggle(HEATMAP.colKey, cv);
+  });
+  if(sankeyChart && SANKEY) bind(sankeyChart, function(p){
+    if(p && p.dataType==='node' && p.name) toggle(SANKEY.sourceKey, p.name);
+  });
+  if(radarChart && RADAR) bind(radarChart, function(p){
+    if(p && p.seriesName) toggle(RADAR.seriesKey, p.seriesName);
+  });
+  if(treemapChart && TREEMAP) bind(treemapChart, function(p){
+    if(p && p.name && TREEMAP.keys && TREEMAP.keys[0]) toggle(TREEMAP.keys[0], p.name);
+  });
+  if(topoChart && TOPO) bind(topoChart, function(p){
+    if(p && p.dataType==='node' && p.name) toggle(TOPO.sourceKey, p.name);
+  });
+  if(cohortChart && COHORT) bind(cohortChart, function(p){
+    if(!p||!p.value) return;
+    var opt=cohortChart.getOption(), gy=opt.yAxis[0].data;
+    var gv=gy[p.value[1]];
+    if(gv!=null && COHORT.groupKey) toggle(COHORT.groupKey, gv);
+  });
+}
+
+function renderChips(){
+  var el=document.getElementById('chips'), keys=Object.keys(FILTERS);
+  if(!keys.length){ el.innerHTML='<span class="lb">未设置筛选 · 点击图表柱条可下钻</span>'; return; }
+  var labelOf={}; D.dims.forEach(function(d){labelOf[d.key]=d.label});
+  var h='';
+  keys.forEach(function(k){ h+='<span class="chip" data-k="'+k+'">'+(labelOf[k]||REGIONLABEL[k]||k)+'：'+FILTERS[k]+' <span class="x">×</span></span>'; });
+  h+='<span class="chip clr" data-k="__all__">清空全部</span>';
+  el.innerHTML=h;
+  el.querySelectorAll('.chip').forEach(function(c){
+    c.onclick=function(){
+      var k=this.getAttribute('data-k');
+      if(k==='__all__'){ FILTERS={}; REGIONFILTER={}; geoCrumbs=[]; geoCur=(GEO&&GEO.root)||null; geoCurKey='100000'; } else delete FILTERS[k];
+      var fd=D.filterDim||(D.dims[0]&&D.dims[0].key);
+      var qb=document.getElementById('quickBtns');
+      if(qb && !FILTERS[fd]){ qb.querySelectorAll('.b').forEach(function(x){x.classList.remove('on')}); if(qb.firstChild) qb.firstChild.classList.add('on'); }
+      SHOWN=60; render();
+    };
+  });
+}
+
+function renderKPI(){
+  var rows=curRows(), amt=sum(rows.map(function(r){return r.a})), cnt=rows.length;
+  var qty=sum(rows.map(function(r){return r.se||0}));
+  document.getElementById('k1').textContent=money(amt);
+  document.getElementById('k2').textContent=cnt+' 笔';
+  document.getElementById('k3').textContent=money(cnt?amt/cnt:0);
+  document.getElementById('k4').textContent=qty.toLocaleString();
+
+  // 环比
+  var ms=months(), idx=ms.indexOf(VIEW);
+  var note = VIEW==='all' ? '全期合计' : (VIEW==='cmp' ? '最近'+Math.min(3,ms.length)+'期' : mLabel(VIEW));
+  ['k1d','k2d','k3d','k4d'].forEach(function(id){ var e=document.getElementById(id); e.textContent=note; e.className='d'; });
+  if(idx>0){
+    var prev=applyFilters(D.rows.filter(function(r){return r.d.substr(0,7)===ms[idx-1]}));
+    var pa=sum(prev.map(function(r){return r.a})), pc=prev.length;
+    var pq=sum(prev.map(function(r){return r.se||0}));
+    function dd(id,cur,prv,fmt){
+      var e=document.getElementById(id);
+      if(!prv){ e.textContent='环比 —'; return; }
+      var p=(cur-prv)/prv*100;
+      e.textContent='环比 '+(p>=0?'↑':'↓')+Math.abs(p).toFixed(1)+'%';
+      e.className='d '+(p>=0?'up':'down');
+    }
+    dd('k1d',amt,pa); dd('k2d',cnt,pc); dd('k3d',cnt?amt/cnt:0,pc?pa/pc:0); dd('k4d',qty,pq);
+  }
+  document.getElementById('tblCount').textContent=cnt+' 条 / '+money(amt);
+}
+
+var BASEOPT = {
+  responsive:true, maintainAspectRatio:false,
+  plugins:{ legend:{display:false},
+    tooltip:{backgroundColor:'rgba(11,18,25,.94)',titleColor:'#8899b0',bodyColor:'#c8d6e5',padding:10,cornerRadius:8,displayColors:false}
+  }
+};
+function axis(color){return {grid:{color:'rgba(255,255,255,.045)',drawBorder:false},ticks:{color:color||'#6b8299',font:{size:9.5}}}}
+
+function drawTrend(){
+  var el=document.getElementById('cTrend'); if(CH.trend) CH.trend.destroy();
+  var ms=months(), rows=applyFilters(D.rows);
+  var amts=ms.map(function(m){return sum(rows.filter(function(r){return r.d.substr(0,7)===m}).map(function(r){return r.a}))});
+  var cnts=ms.map(function(m){return rows.filter(function(r){return r.d.substr(0,7)===m}).length});
+
+  var asLine = (CHARTTYPE==='area'||CHARTTYPE==='line');
+  var ds0 = asLine
+    ? {type:'line',data:amts,borderColor:'#d4a84b',backgroundColor:CHARTTYPE==='area'?'rgba(212,168,75,.18)':'rgba(212,168,75,0)',borderWidth:2,pointRadius:3,pointHoverRadius:5,tension:.35,yAxisID:'y'}
+    : {type:'bar',data:amts,backgroundColor:ms.map(function(m){return m===VIEW?'#d4a84b':'rgba(91,127,255,.75)'}),borderRadius:6,barThickness:ms.length>8?14:26,yAxisID:'y'};
+  var ds1={type:'line',data:cnts,borderColor:'#40bfb0',backgroundColor:'#40bfb0',borderWidth:2,pointRadius:3,pointHoverRadius:5,tension:.35,yAxisID:'y1'};
+  document.getElementById('trendHint').textContent = asLine ? '双折线：金额 / 笔数' : '柱=金额 线=笔数';
+
+  CH.trend=new Chart(el,{
+    data:{labels:ms.map(mLabel),datasets:[ds0,ds1]},
+    options:Object.assign({},BASEOPT,{
+      plugins:{legend:{display:false},tooltip:{backgroundColor:'rgba(11,18,25,.94)',titleColor:'#8899b0',bodyColor:'#c8d6e5',padding:10,cornerRadius:8,
+        callbacks:{label:function(c){return c.datasetIndex===0?('金额 '+money(c.parsed.y)):('笔数 '+c.parsed.y)}}}},
+      scales:{x:{grid:{display:false},ticks:{color:'#6b8299',font:{size:10}}},
+        y:{position:'left',grid:{color:'rgba(255,255,255,.045)',drawBorder:false},ticks:{color:'#6b8299',font:{size:9},callback:function(v){return shortMoney(v)}},beginAtZero:true},
+        y1:{position:'right',grid:{display:false},ticks:{color:'#40bfb0',font:{size:9}},beginAtZero:true}}
+    })
+  });
+}
+
+function drawDim(d){
+  var id='c_'+d.key, el=document.getElementById(id); if(!el) return;
+  if(CH[id]) CH[id].destroy();
+  var box=document.getElementById('cvbox_'+d.key);
+
+  if(VIEW==='cmp'){
+    var ms=months().slice(-3);
+    var rows=applyFilters(D.rows);
+    var tot=groupBy(rows.filter(function(r){return ms.indexOf(r.d.substr(0,7))>=0}),d.key).slice(0,8);
+    var labels=tot.map(function(x){return x.k});
+    var ds=ms.map(function(m,i){
+      var mr=rows.filter(function(r){return r.d.substr(0,7)===m});
+      var g={}; groupBy(mr,d.key).forEach(function(x){g[x.k]=x.a});
+      return {label:mLabel(m),data:labels.map(function(l){return g[l]||0}),backgroundColor:(window.THEME?window.THEME.palette:['#4f7cff','#40bfb0','#d4a84b'])[i%3],borderRadius:4,barThickness:labels.length>6?7:12};
+    });
+    box.style.height=Math.max(240,labels.length*34+60)+'px';
+    CH[id]=new Chart(el,{type:'bar',data:{labels:labels,datasets:ds},options:Object.assign({},BASEOPT,{
+      indexAxis:'y',
+      plugins:{legend:{display:true,position:'top',labels:{color:'#6b8299',font:{size:10},boxWidth:10,padding:10,usePointStyle:true,pointStyle:'rectRounded'}},
+        tooltip:{backgroundColor:'rgba(11,18,25,.94)',titleColor:'#8899b0',bodyColor:'#c8d6e5',padding:10,cornerRadius:8,
+          callbacks:{label:function(c){return c.dataset.label+' '+money(c.parsed.x)}}}},
+      scales:{x:Object.assign(axis(),{beginAtZero:true,ticks:{color:'#6b8299',font:{size:9},callback:function(v){return shortMoney(v)}}}),
+              y:{grid:{display:false},ticks:{color:'#8899b0',font:{size:10}}}}
+    })});
+    return;
+  }
+
+  var g=groupBy(curRows(),d.key).slice(0,10);
+  var labels=g.map(function(x){return x.k}), vals=g.map(function(x){return x.a});
+  box.style.height=Math.max(200,labels.length*30+50)+'px';
+
+  var type, ds, idxAx;
+  if(CHARTTYPE==='area'||CHARTTYPE==='line'){
+    type='line';
+    ds={data:vals, borderColor:'#5b7fff', backgroundColor: CHARTTYPE==='area'?'rgba(91,127,255,.16)':'rgba(91,127,255,0)', borderWidth:2, pointRadius:3, pointHoverRadius:5, tension:.35};
+    idxAx='x';
+  } else {
+    type='bar';
+    ds={data:vals, backgroundColor:labels.map(function(l,i){return FILTERS[d.key]===l?'#d4a84b':COLORS[i%COLORS.length]}), borderRadius:5, barThickness:labels.length>8?11:18};
+    idxAx = (CHARTTYPE==='barh') ? 'y' : 'x';
+  }
+
+  CH[id]=new Chart(el,{
+    type:type,
+    data:{labels:labels,datasets:[ds]},
+    options:Object.assign({},BASEOPT,{
+      indexAxis: idxAx,
+      onClick:function(evt,els){
+        if(!els.length) return;
+        var lab=labels[els[0].index];
+        if(FILTERS[d.key]===lab) delete FILTERS[d.key]; else FILTERS[d.key]=lab;
+        SHOWN=60; render();
+      },
+      plugins:{legend:{display:false},tooltip:{backgroundColor:'rgba(11,18,25,.94)',titleColor:'#8899b0',bodyColor:'#c8d6e5',padding:10,cornerRadius:8,displayColors:false,
+        callbacks:{label:function(c){var it=g[c.dataIndex];return [money(it.a), it.c+' 笔 · 均 '+money(it.a/it.c)]}}}},
+      scales: (idxAx==='y')
+        ? {x:Object.assign(axis(),{beginAtZero:true,ticks:{color:'#6b8299',font:{size:9},callback:function(v){return shortMoney(v)}}}), y:{grid:{display:false},ticks:{color:'#8899b0',font:{size:10}}}}
+        : {x:{grid:{display:false},ticks:{color:'#8899b0',font:{size:10}}}, y:{beginAtZero:true,grid:{color:'rgba(255,255,255,.045)'},ticks:{color:'#6b8299',font:{size:9},callback:function(v){return shortMoney(v)}}}}
+    })
+  });
+}
+
+function renderTable(){
+  var rows=curRows();
+  if(QUERY){ var q=QUERY.toLowerCase();
+    rows=rows.filter(function(r){ for(var k in r){ if(String(r[k]).toLowerCase().indexOf(q)>=0) return true; } return false; });
+  }
+  rows=rows.slice().sort(function(a,b){return a.d<b.d?1:-1});
+  var cols=[{k:'d',l:'日期'}];
+  if(D.rows[0] && 'n' in D.rows[0]) cols.push({k:'n',l:'客户'});
+  D.dims.forEach(function(d){cols.push({k:d.key,l:d.label})});
+  // 地区 / 性别 / 年龄列（若有）
+  if(D.meta){
+    (D.meta.regionKeys||[]).forEach(function(k){ cols.push({k:k, l:REGIONLABEL[k]||k}); });
+    if(D.meta.genderKey) cols.push({k:D.meta.genderKey,l:'性别'});
+    if(D.meta.ageKey) cols.push({k:D.meta.ageKey,l:'年龄'});
+  }
+  cols.push({k:'a',l:D.amountLabel||'金额'});
+  if(D.rows[0] && 'se' in D.rows[0]) cols.push({k:'se',l:D.qtyLabel||'数量'});
+
+  document.getElementById('thead').innerHTML='<tr>'+cols.map(function(c){return '<th'+(c.k==='a'?' style="text-align:right"':'')+'>'+c.l+'</th>'}).join('')+'</tr>';
+  var show=rows.slice(0,SHOWN);
+  document.getElementById('tbody').innerHTML=show.map(function(r){
+    return '<tr>'+cols.map(function(c){
+      var v=r[c.k]; if(c.k==='a') return '<td class="num">'+money(v)+'</td>';
+      return '<td>'+(v===undefined?'':v)+'</td>';
+    }).join('')+'</tr>';
+  }).join('');
+  document.getElementById('more').style.display = rows.length>SHOWN ? 'block' : 'none';
+  document.getElementById('more').textContent='加载更多（还有 '+(rows.length-SHOWN)+' 条）▾';
+}
+
+/* ========== 真实地图（ECharts choropleth） ========== */
+function normGeoName(n){ if(!n) return n;
+  return n.replace(/(省|市|壮族自治区|回族自治区|维吾尔自治区|自治区|特别行政区|地区|盟|自治州)$/,''); }
+
+function buildGeoAlias(){
+  geoAlias = {}; geoNameAlias = {};
+  if(!GEO) return;
+  Object.keys(GEO.geoJSONs).forEach(function(k){
+    (GEO.geoJSONs[k].features||[]).forEach(function(f){
+      var p=f.properties||{}, nm=p.name, ad=p.adcode;
+      if(nm&&ad){ geoAlias[nm]=String(ad); geoAlias[normGeoName(nm)]=String(ad); geoNameAlias[nm]=nm; geoNameAlias[normGeoName(nm)]=nm; }
+    });
+  });
+}
+
+function geoNodeChildren(node){
+  var depth = geoCrumbs.length;
+  var rk = (GEO && GEO.rk) || [];
+  var col = rk[depth];
+  if(!col) return [];
+  var rows = curRows();   // 已应用月份/标签/地区筛选 -> 地图随联动变化
+  var m = {};
+  rows.forEach(function(r){
+    var v = String(r[col]!=null ? r[col] : '');
+    if(!m[v]) m[v] = {a:0, c:0, orig:v};
+    m[v].a += r.a; m[v].c++;
+  });
+  var out = [];
+  for(var k in m){
+    var canon = geoNameAlias[normGeoName(k)] || geoNameAlias[k] || k;
+    out.push({name:canon, orig:k, value:m[k].a, cnt:m[k].c});
+  }
+  return out.sort(function(x,y){return y.value-x.value});
+}
+
+function geoColor(v,max){
+  var pct = max ? v/max : 0;
+  var stops=['#0e2a3a','#1d5b7a','#2a9db5','#4fd0c0','#9be7a0','#f2d65c','#e8767a'];
+  return stops[Math.min(stops.length-1, Math.floor(pct*stops.length))];
+}
+
+function renderGeo(key, node, crumbs){
+  if(!geoChart) return;
+  var gj = GEO.geoJSONs[key];
+  if(!gj){ document.getElementById('geoLegend').innerHTML='<span class="lg">该层级暂无地图边界数据</span>'; return; }
+  echarts.registerMap('GEO', gj);
+  var data = geoNodeChildren(node); geoData = data;
+  var vals = data.map(function(d){return d.value;});
+  var max = Math.max.apply(null, vals.concat([1]));
+  geoChart.setOption({
+    tooltip:{trigger:'item', confine:true,
+      formatter:function(p){ var d=p.data; if(!d||d.value==null) return p.name+'<br>无数据';
+        return p.name+'<br>金额 '+money(d.value)+'（'+shortMoney(d.value)+'）<br>笔数 '+(d.cnt||0); }},
+    visualMap:{ min:0, max:max, left:14, bottom:18, itemHeight:100, text:['高','低'], textStyle:{color:'#8899b0',fontSize:10},
+      inRange:{color:['#0e2a3a','#1d5b7a','#2a9db5','#4fd0c0','#9be7a0','#f2d65c','#e8767a']}, calculable:true },
+    series:[{ type:'map', map:'GEO', roam:true, zoom:1.15,
+      itemStyle:{borderColor:'rgba(255,255,255,.25)', borderWidth:.6, areaColor:'#0e1a26'},
+      emphasis:{label:{show:true,color:'#fff'}, itemStyle:{areaColor:'#3a63d8'}},
+      label:{show:false},
+      data:data }]
+  }, true);
+  geoChart.off('click');
+  geoChart.on('click', function(p){ onGeoClick(p.name); });
+  // 面包屑
+  var crumb=document.getElementById('geoCrumb');
+  var h='<span class="rc'+(crumbs.length===0?' cur':'')+'" data-l="-1">全国</span>';
+  crumbs.forEach(function(c,i){ h+=' <span class="rsep">›</span> <span class="rc'+(i===crumbs.length-1?' cur':'')+'" data-l="'+i+'">'+c+'</span>'; });
+  crumb.innerHTML=h;
+  crumb.querySelectorAll('.rc').forEach(function(el){ el.onclick=function(){
+    var l=parseInt(el.getAttribute('data-l'),10);
+    var path=(l<0)?[]:crumbs.slice(0,l+1);
+    REGIONFILTER={}; for(var i=0;i<path.length;i++) REGIONFILTER[GEO.rk[i]]=path[i];
+    geoGoto(path); render();
+  }; });
+  // 图例
+  document.getElementById('geoLegend').innerHTML = data.slice(0,12).map(function(d){
+    return '<span class="lg"><i style="background:'+geoColor(d.value,max)+'"></i>'+d.name+'</span>'; }).join('');
+}
+
+function onGeoClick(name){
+  var item = geoData.filter(function(d){return d.name===name;})[0];
+  if(!item) return;
+  var child = geoCur.children && geoCur.children[item.orig];
+  if(!child) return;
+  var path = geoCrumbs.concat([item.orig]);
+  REGIONFILTER={}; for(var i=0;i<path.length;i++) REGIONFILTER[GEO.rk[i]]=path[i];
+  geoGoto(path); render();
+}
+
+function geoGoto(path){
+  geoCrumbs = path.slice();
+  var node = GEO.root, ok=true;
+  for(var i=0;i<path.length;i++){
+    if(node.children && node.children[path[i]]) node=node.children[path[i]];
+    else { ok=false; break; }
+  }
+  if(!ok){ node=GEO.root; geoCrumbs=[]; }
+  geoCur = node;
+  if(geoCrumbs.length===0) geoCurKey='100000';
+  else { var nm=geoCrumbs[geoCrumbs.length-1]; geoCurKey = geoAlias[normGeoName(nm)]||geoAlias[nm]||'100000'; }
+  // 渲染统一交给 render()，避免重复 setOption
+}
+
+function initGeo(){
+  if(!GEO) return;
+  buildGeoAlias();
+  geoChart = echarts.init(document.getElementById('geoMain'));
+  window.addEventListener('resize', function(){ if(geoChart) geoChart.resize(); });
+  geoGoto([]);
+}
+
+function render(){
+  renderChips(); renderKPI(); drawTrend();
+  D.dims.forEach(drawDim);
+  drawRegion(); drawGender(); drawAge(); drawFunnel(); drawHeatmap(); drawSankey(); drawRadar(); drawGauge(); drawTreemap(); drawTopology(); drawCohort();
+  renderTable();
+  if(GEOREADY && geoChart) renderGeo(geoCurKey, geoCur, geoCrumbs);  // 地图随筛选联动
+  bindChartClicks();  // 图表点击联动（每次渲染重建实例后重新绑定）
+}
+</script>
+</body>
+</html>
