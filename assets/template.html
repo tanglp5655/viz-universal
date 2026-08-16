@@ -1369,10 +1369,23 @@ function onGeoClick(name){
   if(!item) return;
   var child = geoCur.children && geoCur.children[item.orig];
   if(!child){
-    if(GEO.world){   // 世界地图：点击国家 = 筛选该国家（无钻取，全盘联动）
+    if(GEO.world){   // 世界模式：点击最后一级（国家或州/省）→ 联动筛选
       REGIONFILTER = {};
-      REGIONFILTER[GEO.rk[0]] = item.orig;
-      geoGoto([]); render();
+      if(geoCrumbs.length===0){
+        // 世界地图点国家（数据无省/州）：筛选该国
+        REGIONFILTER[GEO.rk[0]] = item.orig;
+        geoGoto([]); render();
+      } else if(geoCrumbs.length===1 && GEO.rk[1]){
+        // 子地图点州/省（最后一级）：筛选 国家+省 → 全盘联动
+        REGIONFILTER[GEO.rk[0]] = geoCrumbs[0];
+        REGIONFILTER[GEO.rk[1]] = item.orig;
+        geoGoto([geoCrumbs[0]]); render();
+      }
+    } else if(geoCrumbs.length>0){
+      // 中国模式：点击最后一级（区/县）→ 筛选完整路径，停留当前层级
+      var path = geoCrumbs.concat([item.orig]);
+      REGIONFILTER={}; for(var i=0;i<path.length;i++) REGIONFILTER[GEO.rk[i]]=path[i];
+      geoGoto(geoCrumbs); render();
     }
     return;
   }
