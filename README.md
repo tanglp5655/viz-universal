@@ -92,6 +92,31 @@ python test_all_industries.py --keep # 保留产物便于检查
 3. `mapping.json`（编号↔真名对照表）本地留存，绝不随看板发出。
 4. 对外版脚注提示"请勿转发截图至外部渠道"。
 
+## 📐 适用边界
+
+**适合**
+- 任意行业明细数据（销售/医疗/教育/金融/外贸/物流…），Excel/CSV/JSON/SQLite/URL 都行
+- 数据量 **≤ 5 万行** 体验最佳（10 万+行请用 `--sample N` 采样）
+- 给老板/客户做**一次性可视化汇报**（单文件、双击即用、加密可控）
+
+**不适合**（用其它工具更合适）
+- 实时行情/盘口类（证券 K 线等）→ 用 Wind / 同花顺 / 东方财富等专业行情工具
+- 金融级机密（涉及数千万/合规审查）→ 建议内网部署 + 专业加密方案，本工具仅"防偷看"级
+- 多页 SPA/路由型 BI 应用 → 用 Power BI / Tableau / FineBI / 网易有数等
+- 大数据量（百万级）实时分析 → 用 ClickHouse / 离线数仓 + 专业 BI
+
+**数据太大的处理**
+```bash
+# 随机采样 5000 行（固定种子可复现）
+viz-build -i 巨表.json -o 看板.html --sample 5000
+```
+> 注：当前 `--sample` 匿名阶段采样（完整看板在数据子集上生成，看脱敏程度仍按 L0–L3 设置）。
+
+**零配置全功能试用**（不含 schema 时也能出 12 面板）：
+```bash
+viz-build -i data_masked.json -o 看板.html --schema references/schema/example.json
+```
+
 ## 📜 License
 
 [MIT](LICENSE)

@@ -215,7 +215,12 @@ def guess_key(header: str):
 
 # ---------------- 读取 ----------------
 def read_xlsx(path, sheet=None):
-    from openpyxl import load_workbook
+    try:
+        from openpyxl import load_workbook
+    except ImportError:
+        print('  ⚠ 读取 xlsx 需要 openpyxl，请先运行：pip install openpyxl')
+        print('    （如果是 .csv / .json / .xls 文件，无需 openpyxl）')
+        sys.exit(EXIT_CONFIG)
     wb = load_workbook(path, data_only=True)
     ws = wb[sheet] if sheet else wb[wb.sheetnames[0]]
     rows = list(ws.iter_rows(values_only=True))

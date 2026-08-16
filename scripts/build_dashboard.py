@@ -566,20 +566,30 @@ def main():
         if args.viewer_password:
             warn('--viewer-password 仅在加密模式（-p）下生效，已忽略（本看板为免密直开）')
     else:
-        enc = encrypt_text(plain, args.password, args.iter)
-        payload_out = enc
-        print(f'明文 {len(plain.encode("utf-8"))/1024:.1f} KB → 加密中（{args.iter} 次迭代）…')
-        if args.viewer_password:
-            exclude = set(f.strip() for f in (args.viewer_fields or 'n,teacher,signer').split(',') if f.strip())
-            rows_v = [{k: v for k, v in r.items() if k not in exclude} for r in rows]
-            dims_v = [d for d in dims if d['key'] not in exclude]
-            pv = dict(payload_obj)
-            pv['rows'] = rows_v
-            pv['dims'] = dims_v
-            viewer_out = encrypt_text(json.dumps(pv, ensure_ascii=False, separators=(',', ':')),
-                                      args.viewer_password, args.iter)
-            print('🔒 分级权限：访客密码已启用（排除字段：%s；主视图 %d 条 → 访客视图 %d 条）'
-                  % ('/'.join(sorted(exclude)), len(rows), len(rows_v)))
+        try:
+            enc = encrypt_text(plain, args.password, args.iter)
+        except Exception as _e:
+            print('  ⚠ 加密失败（%s），自动降级为免密直开（数据仍脱敏）' % _e)
+            print('    可重试：换密码重跑；或加 --no-lock 强制免密')
+            payload_out = payload_obj
+            viewer_out = None
+            opened = True
+            args.no_lock = True
+            LOCKED = 'false'
+        else:
+            payload_out = enc
+            print(f'明文 {len(plain.encode("utf-8"))/1024:.1f} KB → 加密中（{args.iter} 次迭代）…')
+            if args.viewer_password:
+                exclude = set(f.strip() for f in (args.viewer_fields or 'n,teacher,signer').split(',') if f.strip())
+                rows_v = [{k: v for k, v in r.items() if k not in exclude} for r in rows]
+                dims_v = [d for d in dims if d['key'] not in exclude]
+                pv = dict(payload_obj)
+                pv['rows'] = rows_v
+                pv['dims'] = dims_v
+                viewer_out = encrypt_text(json.dumps(pv, ensure_ascii=False, separators=(',', ':')),
+                                          args.viewer_password, args.iter)
+                print('🔒 分级权限：访客密码已启用（排除字段：%s；主视图 %d 条 → 访客视图 %d 条）'
+                      % ('/'.join(sorted(exclude)), len(rows), len(rows_v)))
 
     # 资源完整性检查（技能目录不完整时给出明确错误而非 traceback）
     for f, name in ((TPL, '看板模板'), (CRYPTO, '解密库 crypto.js'), (CHARTJS, '图表库 chart.umd.min.js')):

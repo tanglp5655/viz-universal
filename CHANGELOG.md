@@ -2,6 +2,15 @@
 
 本项目遵循语义化版本；重大功能与修复在此记录。
 
+## [0.8.3] - 2026-08-16 — 评测修复（提升 R/A/E）
+
+### 修复
+- **缺 openpyxl 友好提示**（评测 R）：anonymize 读取 xlsx 时检测到 openpyxl 未装 → 提示 `pip install openpyxl` 并退出（不再 traceback）。
+- **加密失败自动降级**（评测 R）：build 加密异常时不再卡死 → 自动降级为免密直开（数据仍脱敏），给出明确提示。
+- **README 「适用边界」**（评测 A -0.3）：新增章节说清"何时用 / 何时不用 / 数据太大怎么办 / 零配置全功能试用"。
+- **零配置全功能试用提示**：README「TL;DR 跳转表」补充 `viz-build --schema references/schema/example.json` 一行命令。
+- 回归 90/90。
+
 ## [0.8.2] - 2026-08-16
 
 (SkillHub 0.8.1 已被占用 → 跳过)
