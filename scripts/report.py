@@ -216,6 +216,90 @@ ul{{padding-left:18px;font-size:14px}} li{{margin:5px 0}}
     return html
 
 
+def render_pdf(r, title='经营分析报告', out_path=None):
+    """渲染为 PDF 报告（reportlab + 中文字体，需 pip install reportlab）。
+    中文字体按系统可用性注册：微软雅黑(msyh.ttc)/黑体(simhei.ttf)；无则回退英文。"""
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import getSampleStyleSheet
+    from reportlab.lib import colors
+    from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer,
+                                    Table, TableStyle)
+    from reportlab.pdfbase import pdfmetrics
+    from reportlab.pdfbase.ttfonts import TTFont
+
+    font = 'Helvetica'
+    for cand, name in (('C:/Windows/Fonts/msyh.ttc', 'MSYH'),
+                       ('C:/Windows/Fonts/simhei.ttf', 'SimHei'),
+                       ('/System/Library/Fonts/PingFang.ttc', 'PingFang')):
+        if os.path.exists(cand):
+            try:
+                pdfmetrics.registerFont(TTFont(name, cand, subfontIndex=0)
+                                        if cand.endswith('.ttc') else TTFont(name, cand))
+                font = name
+                break
+            except Exception:
+                continue
+
+    st = getSampleStyleSheet()
+    st['Title'].fontName = font
+    st['Heading2'].fontName = font
+    st['BodyText'].fontName = font
+    st['Title'].fontSize = 18
+    st['Heading2'].fontSize = 13
+    st['Heading2'].spaceBefore = 12
+    st['BodyText'].fontSize = 10.5
+
+    def money(v):
+        return '¥{:,}'.format(int(v))
+
+    story = [Paragraph(title, st['Title']),
+             Paragraph('已脱敏 %s · 数据 %d 条 · 覆盖月份 %s'
+                       % (r.get('level', 'L0'), r.get('rows', 0), ' / '.join(r.get('months', []))),
+                       st['BodyText']), Spacer(1, 10)]
+    # 概览
+    kpi = [['总金额', '交易笔数', '客单价', '环比'],
+           [money(r.get('total', 0)), r.get('cnt', 0),
+            money(r.get('total', 0) / r.get('cnt', 1)),
+            ('%+.1f%%' % r['mom']) if r.get('mom') is not None else '—']]
+    t = Table(kpi, colWidths=[120, 100, 100, 110])
+    t.setStyle(TableStyle([('FONTNAME', (0, 0), (-1, -1), font), ('FONTSIZE', (0, 0), (-1, -1), 10),
+                           ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#eef2f7')),
+                           ('GRID', (0, 0), (-1, -1), 0.4, colors.HexColor('#d5dde5')),
+                           ('ALIGN', (1, 1), (-1, -1), 'RIGHT')]))
+    story += [t, Spacer(1, 8)]
+    # 月度走势
+    story.append(Paragraph('一、月度走势', st['Heading2']))
+    mtab = [['月份', '金额', '笔数']] + [[m, money(v), r['month_cnt'].get(m, 0)]
+                                          for m, v in r.get('month_amt', {}).items()]
+    t = Table(mtab, colWidths=[120, 150, 100])
+    t.setStyle(TableStyle([('FONTNAME', (0, 0), (-1, -1), font), ('FONTSIZE', (0, 0), (-1, -1), 10),
+                           ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#eef2f7')),
+                           ('GRID', (0, 0), (-1, -1), 0.4, colors.HexColor('#d5dde5'))]))
+    story.append(t)
+    # 构成
+    story.append(Paragraph('二、构成分析', st['Heading2']))
+    for dt in r.get('dims_top', []):
+        if dt['top']:
+            items = '、'.join('「%s」占 %.1f%%' % (n, p) for n, a, p in dt['top'])
+            story.append(Paragraph('<b>%s</b>：%s' % (dt['label'], items), st['BodyText']))
+    # 地区
+    if r.get('region_top'):
+        items = '、'.join('「%s」%.1f%%' % (n, p) for n, a, p in r['region_top'])
+        story.append(Paragraph('三、%s分布：%s' % (r.get('region_label', '区域'), items), st['Heading2']))
+    # 建议
+    story.append(Paragraph('四、行动建议', st['Heading2']))
+    for tip in r.get('tips', []):
+        story.append(Paragraph('· ' + tip, st['BodyText']))
+    # 文末缺失说明
+    if r.get('missing'):
+        story.append(Paragraph('五、数据缺失补充说明', st['Heading2']))
+        for m in r['missing']:
+            story.append(Paragraph('· %s：缺失 %d 条（%.0f%%），未纳入对应统计*'
+                                   % (m['field'], m['n'], m['pct']), st['BodyText']))
+    SimpleDocTemplate(out_path, pagesize=A4, topMargin=36, bottomMargin=36).build(story)
+    return out_path
+
+
 def main():
     import argparse
     ap = argparse.ArgumentParser(description='生成经营分析报告（规则引擎，离线）')

@@ -213,6 +213,61 @@ def guess_key(header: str):
     return None
 
 
+# ---------------- 数据库直连 ----------------
+def read_db(uri, table):
+    """从数据库读表（全量）为 dict 列表。支持：
+    sqlite:///path/to.db            （零依赖）
+    mysql://user:pass@host:port/db   （需 pip install pymysql）
+    postgres://user:pass@host:port/db（需 pip install psycopg2-binary）
+    表名缺省时取首个非系统表。"""
+    if uri.startswith('sqlite://'):
+        import sqlite3
+        dbp = uri[len('sqlite://'):]
+        conn = sqlite3.connect(dbp)
+        conn.row_factory = sqlite3.Row
+        cur = conn.cursor()
+        cur.execute('SELECT name FROM sqlite_master WHERE type="table" AND name NOT LIKE "sqlite_%"')
+        tables = [r[0] for r in cur.fetchall()]
+        tbl = table or (tables[0] if tables else None)
+        if not tbl:
+            conn.close()
+            raise RuntimeError('数据库中没有可读的表')
+        rows = [dict(r) for r in cur.execute('SELECT * FROM %s' % tbl).fetchall()]
+        conn.close()
+        return rows
+    if uri.startswith('mysql://') or uri.startswith('postgres://'):
+        if uri.startswith('mysql://'):
+            try:
+                import pymysql
+            except ImportError:
+                print('  ⚠ MySQL 直连需要 pymysql：pip install pymysql')
+                sys.exit(EXIT_CONFIG)
+            dbmod = pymysql
+        else:
+            try:
+                import psycopg2
+            except ImportError:
+                print('  ⚠ PostgreSQL 直连需要 psycopg2-binary：pip install psycopg2-binary')
+                sys.exit(EXIT_CONFIG)
+            dbmod = psycopg2
+        conn = dbmod.connect(uri[len(uri.split('://')[0]) + 3:].split('/')[0].strip(),
+                             database=uri.split('/')[-1].strip())
+        cur = conn.cursor()
+        cur.execute('SHOW TABLES' if uri.startswith('mysql://') else
+                    "SELECT tablename FROM pg_tables WHERE schemaname='public'")
+        tables = [r[0] for r in cur.fetchall()]
+        tbl = table or (tables[0] if tables else None)
+        if not tbl:
+            conn.close()
+            raise RuntimeError('数据库中没有可读的表')
+        cur.execute('SELECT * FROM %s' % tbl)
+        cols = [d[0] for d in cur.description]
+        rows = [dict(zip(cols, r)) for r in cur.fetchall()]
+        conn.close()
+        return rows
+    raise RuntimeError('不支持的数据库连接串（支持 sqlite:// / mysql:// / postgres://）')
+
+
 # ---------------- 读取 ----------------
 def read_xlsx(path, sheet=None):
     try:
@@ -532,6 +587,9 @@ def build(records, level='L2', scale=1.0, date_shift=0, mapping=None,
 def main():
     ap = argparse.ArgumentParser(description='销售数据脱敏与标准化')
     ap.add_argument('-i', '--input', nargs='+', required=False, help='输入文件（可多个）xlsx/csv/json，或 - 用 stdin')
+    ap.add_argument('--db', default=None,
+                    help='【可选】数据库直连（替代 -i）：sqlite:///路径 或 mysql://用户:密码@主机:端口/库 或 postgres://…')
+    ap.add_argument('--db-table', default=None, help='数据库表名（缺省取库中第一个非系统表）')
     ap.add_argument('-o', '--output', required=False, help='输出标准 JSON')
     ap.add_argument('--wizard', action='store_true', help='交互向导：逐项提问生成参数（仅交互终端可用）')
     ap.add_argument('--sample', type=int, default=0, help='随机采样 N 条后脱敏（演示用，固定种子）')
@@ -574,8 +632,8 @@ def main():
         args.level = lv or args.level
         print()
 
-    if not args.input:
-        err('需要 -i 输入文件（或加 --wizard 交互向导）')
+    if not args.input and not args.db:
+        err('需要 -i 输入文件（或 --db 数据库直连，或加 --wizard 交互向导）')
         return EXIT_USAGE
     if not args.output:
         err('需要 -o 输出文件（或加 --wizard 交互向导）')
@@ -588,14 +646,22 @@ def main():
             extra_map[a.strip()] = b.strip()
 
     records = []
-    for path in args.input:
+    if args.db:
         try:
-            rs = read_any(path, args.sheet)
+            records = read_db(args.db, args.db_table)
         except Exception as e:
-            err('读取失败 %s：%s' % (path, e))
+            err('数据库读取失败：%s' % e)
             return EXIT_RUNTIME
-        print(f'读取 {path if path == "-" else os.path.basename(path)}: {len(rs)} 行')
-        records.extend(rs)
+        print('🔌 数据库直连 %s → %s 行' % (args.db.split('://')[0], len(records)))
+    else:
+        for path in args.input:
+            try:
+                rs = read_any(path, args.sheet)
+            except Exception as e:
+                err('读取失败 %s：%s' % (path, e))
+                return EXIT_RUNTIME
+            print(f'读取 {path if path == "-" else os.path.basename(path)}: {len(rs)} 行')
+            records.extend(rs)
 
     if args.sample and 0 < args.sample < len(records):
         import random

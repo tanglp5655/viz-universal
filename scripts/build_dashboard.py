@@ -448,6 +448,8 @@ def main():
     ap.add_argument('--list-themes', action='store_true', help='列出全部可选视觉主题后退出')
     ap.add_argument('--report', default=None, metavar='PATH',
                     help='【可选】同时生成经营分析报告 HTML 到 PATH（规则引擎，离线可用：概览/走势/构成/地区/风险/建议/缺失说明）')
+    ap.add_argument('--report-pdf', default=None, metavar='PATH',
+                    help='【可选】同时生成经营分析报告 PDF 到 PATH（需 pip install reportlab；自动使用系统中文字体）')
     ap.add_argument('--live', default=None, metavar='URL',
                     help='【可选】实时大屏：指向脱敏 JSON 数据源 URL，看板每 N 秒自动拉取并刷新全部图表（数据源需为 anonymize 产出的 masked JSON，且该 URL 可被浏览器 fetch）')
     ap.add_argument('--live-interval', type=int, default=30,
@@ -648,14 +650,23 @@ def main():
         fp.write(html)
 
     # 可选：同时生成经营分析报告（规则引擎，离线）
-    if args.report:
+    if args.report or args.report_pdf:
         try:
             sys.path.insert(0, os.path.join(BASE, 'scripts'))
             from report import analyze, render_html as _report_render
             _rpt = analyze({'rows': rows, 'dims': dims, 'level': level, 'meta': meta})
-            with open(args.report, 'w', encoding='utf-8') as fp:
-                fp.write(_report_render(_rpt, args.title or '经营分析报告'))
-            print('📋 已生成经营分析报告 %s' % args.report)
+            if args.report:
+                with open(args.report, 'w', encoding='utf-8') as fp:
+                    fp.write(_report_render(_rpt, args.title or '经营分析报告'))
+                print('📋 已生成经营分析报告 %s' % args.report)
+            if args.report_pdf:
+                try:
+                    from report import render_pdf as _report_pdf
+                except ImportError:
+                    print('  ⚠ 生成 PDF 需要 reportlab：pip install reportlab（HTML 报告不受影响）')
+                else:
+                    _report_pdf(_rpt, args.title or '经营分析报告', args.report_pdf)
+                    print('📄 已生成经营分析报告 PDF %s' % args.report_pdf)
         except Exception as _e:
             print('  ⚠ 报告生成失败（不影响看板）：%s' % _e)
 

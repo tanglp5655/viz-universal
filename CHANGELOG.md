@@ -2,6 +2,13 @@
 
 本项目遵循语义化版本；重大功能与修复在此记录。
 
+## [0.8.6] - 2026-08-16 — P1：数据库直连 + 经营分析报告 PDF
+
+### 新增
+- **数据库直连**（anonymize `--db`）：支持 `sqlite:///路径`（零依赖）/ `mysql://用户:密码@主机:端口/库`（pip install pymysql）/ `postgres://…`（pip install psycopg2-binary）。`--db-table` 指定表，缺省取首个非系统表。字段自动识别（金额/日期/维度/地区）。
+- **经营分析报告 PDF**（build `--report-pdf <path>`）：reportlab 生成中文 PDF（自动注册系统字体：微软雅黑/黑体/PingFang）；无 reportlab 时友好提示且不影响看板与 HTML 报告。
+- 回归 90/90。
+
 ## [0.8.5] - 2026-08-16 — description 头部重写（强化能力 + 明确边界 + 触发词扩充）
 
 ### 变更
