@@ -668,7 +668,10 @@ def main():
                     _report_pdf(_rpt, args.title or '经营分析报告', args.report_pdf)
                     print('📄 已生成经营分析报告 PDF %s' % args.report_pdf)
         except Exception as _e:
-            print('  ⚠ 报告生成失败（不影响看板）：%s' % _e)
+            if 'reportlab' in str(_e):
+                print('  ⚠ 生成 PDF 需要 reportlab：pip install reportlab（HTML 报告与看板不受影响）')
+            else:
+                print('  ⚠ 报告生成失败（不影响看板）：%s' % _e)
 
     total = sum(r.get('a', 0) for r in rows)
     size = os.path.getsize(args.output) / 1024
