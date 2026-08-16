@@ -500,6 +500,29 @@ def main():
         err('schema 配置错误：%s' % e)
     if schema_errs:
         return EXIT_CONFIG
+    # 面板字段校验：schema 引用的字段在数据中不存在时警告（避免面板静默空白，如 sankey 缺 ssrc）
+    if schema:
+        _sf = {'funnel': ['stageKey'], 'heatmap': ['rowKey', 'colKey'],
+               'sankey': ['sourceKey', 'targetKey'], 'radar': ['seriesKey', 'axisKey'],
+               'gauge': ['measure'], 'treemap': ['keys'],
+               'topology': ['sourceKey', 'targetKey'], 'cohort': ['groupKey', 'stepKey']}
+        _data_keys = set()
+        for _r in rows:
+            _data_keys.update(_r.keys())
+        for _p, _cfg in schema.items():
+            if _p not in _sf or not isinstance(_cfg, dict):
+                continue
+            for _kk in _sf[_p]:
+                _v = _cfg.get(_kk)
+                if not _v:
+                    continue
+                _vals = [_v] if isinstance(_v, str) else _v
+                for _f in _vals:
+                    if _f in ('a', 'count', 'se'):
+                        continue
+                    if _f not in _data_keys:
+                        print('  ⚠ 面板「%s」引用的字段「%s」在数据中不存在，该面板将无数据（请提供 %s 列，或修改 schema）'
+                              % (_p, _f, _f))
     if geo:
         print('🌏 检测到地区分层，构建真实地图（合规 GeoJSON + 离线 ECharts）…')
     # 漏斗图 / 热力图 / 桑基图用 ECharts 渲染，schema 含对应配置时内嵌 ECharts
