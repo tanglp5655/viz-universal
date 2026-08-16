@@ -939,13 +939,13 @@ function init(){
     });
   }
 
-  // 图表样式切换
+  // 图表样式切换（作用域见副标与 title：横向/柱状=维度排行，面积/曲线=月度走势+维度排行）
   var ctb=document.getElementById('chartTypeBtns');
   if(D.dims.length){
     ctb.style.display='flex';
-    var cts=[['barh','横向','排行首选'],['barv','柱状','排行备选'],['area','面积','走势·总量'],['line','曲线','走势·趋势']];
+    var cts=[['barh','横向','排行·横柱','仅维度排行图'],['barv','柱状','排行·竖柱','仅维度排行图'],['area','面积','走势·面积','月度走势+排行'],['line','曲线','走势·折线','月度走势+排行']];
     var ch='';
-    cts.forEach(function(c){ ch+='<button class="b'+(c[0]===CHARTTYPE?' on':'')+'" data-ct="'+c[0]+'">'+c[1]+'<span class="m">'+c[2]+'</span></button>'; });
+    cts.forEach(function(c){ ch+='<button class="b'+(c[0]===CHARTTYPE?' on':'')+'" data-ct="'+c[0]+'" title="'+c[3]+'">'+c[1]+'<span class="m">'+c[2]+'</span></button>'; });
     ctb.innerHTML=ch;
     if(!BOUND) ctb.addEventListener('click', function(e){
       var b=e.target.closest('.b'); if(!b) return;
