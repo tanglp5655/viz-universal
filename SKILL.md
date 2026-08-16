@@ -226,6 +226,13 @@ SK="${VIZ_UNIVERSAL_HOME:-C:/Users/jiang/.workbuddy/skills/viz-universal}"
 mkdir -p dist && cp 看板.html dist/index.html   # 然后调用 cloudstudio 部署工具
 ```
 
+**实时大屏**（`--live <数据URL> [--live-interval 秒]`）：看板每 N 秒自动拉取最新脱敏 JSON 并刷新全部图表/地图/KPI。
+```bash
+viz-build -i data_masked.json -o 大屏.html --live "https://你的服务器/data_masked.json" --live-interval 15
+# 数据源 = anonymize 产出的 masked JSON，放静态服务器/对象存储，用脚本定时更新该文件即可
+```
+> 注意：浏览器需能 fetch 到该 URL（同源或数据源允许 CORS）；本地演示可 `python -m http.server 8899` 后把数据放该目录。
+
 ## 输出规范（通用条款 · 所有行业适用）：缺失字段处理
 
 生成**报告/文案/分析结论**（含看板中的文字叙述、表格说明）时，若数据字段缺失或无法获取（如性别、转化路径、年龄、签单人、城市等），必须遵守：
