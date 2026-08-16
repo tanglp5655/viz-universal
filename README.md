@@ -39,6 +39,30 @@ cat data.json | python scripts/anonymize.py -i - -o data_masked.json --level L2
 
 免密码直开用 `--no-lock`（数据仍脱敏）；查看全部主题：`viz-build --list-themes`。
 
+## 🚀 3 分钟起步（新手必读）
+
+1. **装**：`pip install -e .`（或直接跑 `python scripts/*.py`，无需安装）
+2. **生成**：
+   ```bash
+   viz-anonymize -i 数据.xlsx -o data_masked.json --level L2
+   viz-build -i data_masked.json -o 看板.html --no-lock
+   ```
+3. **看**：双击 看板.html → 点图表联动筛选 → 点地图钻取 → 右上角切换主题
+
+进阶：`viz-build -i data_masked.json -o 看板.html --report 报告.html` 顺带生成**智能经营分析报告**（自动写分析结论与建议）。
+
+## 📑 TL;DR 跳转表（不想一次读完全部文档）
+
+| 想了解 | 去哪看 |
+|---|---|
+| 配置不同行业（schema） | [SKILL.md §声明式 viz-schema](SKILL.md) · [example.json](references/schema/example.json) |
+| 全部面板 / 图表配置 | [SKILL.md §看板功能](SKILL.md) |
+| 脱敏级别 / 加密 / 安全边界 | [SKILL.md §安全边界](SKILL.md) |
+| 智能经营分析报告（--report） | [SKILL.md §输出规范与交付](SKILL.md) |
+| 问题排查 | [references/FAQ.md](references/FAQ.md) |
+| 10 套主题 | [references/THEMES.md](references/THEMES.md) |
+| 架构 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
+
 ## 📖 文档
 
 | 文档 | 说明 |
