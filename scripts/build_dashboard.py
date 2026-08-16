@@ -446,6 +446,8 @@ def main():
     ap.add_argument('--theme', default=None,
                    help='看板视觉主题 id（apple-glass/stripe/vercel/linear/bloomberg/notion/neubrutalism/tokyo-night/nordic/cyberpunk）。不填则保持原深蓝默认风')
     ap.add_argument('--list-themes', action='store_true', help='列出全部可选视觉主题后退出')
+    ap.add_argument('--report', default=None, metavar='PATH',
+                    help='【可选】同时生成经营分析报告 HTML 到 PATH（规则引擎，离线可用：概览/走势/构成/地区/风险/建议/缺失说明）')
     ap.add_argument('--iter', type=int, default=DEFAULT_ITERATIONS)
     args = ap.parse_args()
 
@@ -599,6 +601,18 @@ def main():
 
     with open(args.output, 'w', encoding='utf-8') as fp:
         fp.write(html)
+
+    # 可选：同时生成经营分析报告（规则引擎，离线）
+    if args.report:
+        try:
+            sys.path.insert(0, os.path.join(BASE, 'scripts'))
+            from report import analyze, render_html as _report_render
+            _rpt = analyze({'rows': rows, 'dims': dims, 'level': level, 'meta': meta})
+            with open(args.report, 'w', encoding='utf-8') as fp:
+                fp.write(_report_render(_rpt, args.title or '经营分析报告'))
+            print('📋 已生成经营分析报告 %s' % args.report)
+        except Exception as _e:
+            print('  ⚠ 报告生成失败（不影响看板）：%s' % _e)
 
     total = sum(r.get('a', 0) for r in rows)
     size = os.path.getsize(args.output) / 1024

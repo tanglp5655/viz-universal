@@ -165,6 +165,7 @@ td.num{text-align:right;color:#d4a84b;font-variant-numeric:tabular-nums}
       </div>
       <button class="lockbtn" id="relock">🔒 锁定</button>
       <button class="lockbtn" id="exportPng" title="把当前所有图表导出为 PNG">⬇ 导出 PNG</button>
+      <button class="lockbtn" id="helpBtn" title="使用说明">❓ 帮助</button>
       <select id="themeSel" title="切换视觉主题（实时预览）"></select>
     </div>
     <div class="btnrow" id="periodBtns"></div>
@@ -1472,6 +1473,44 @@ function render(){
   if(GEOREADY && geoChart) renderGeo(geoCurKey, geoCur, geoCrumbs);  // 地图随筛选联动
   bindChartClicks();  // 图表点击联动（每次渲染重建实例后重新绑定）
 }
+
+/* ========== 新手引导：使用说明弹层 ========== */
+function openHelp(){
+  var ov=document.getElementById('helpOv');
+  if(ov) ov.style.display='flex';
+}
+function closeHelp(){
+  var ov=document.getElementById('helpOv');
+  if(ov) ov.style.display='none';
+}
+document.addEventListener('DOMContentLoaded', function(){
+  var b=document.getElementById('helpBtn');
+  if(b) b.onclick=openHelp;
+  var x=document.getElementById('helpClose');
+  if(x) x.onclick=closeHelp;
+  var ov=document.getElementById('helpOv');
+  if(ov) ov.onclick=function(e){ if(e.target===ov) closeHelp(); };
+});
 </script>
+<div id="helpOv" style="display:none;position:fixed;inset:0;background:rgba(5,10,16,.72);z-index:9998;align-items:center;justify-content:center;padding:20px" onclick="">
+  <div style="background:#101b27;border:1px solid rgba(90,140,220,.18);border-radius:18px;max-width:520px;width:100%;max-height:82vh;overflow:auto;padding:26px 28px;box-shadow:0 30px 80px rgba(0,0,0,.5)">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <h2 style="margin:0;font-size:17px;color:#fff">📖 使用说明</h2>
+      <button id="helpClose" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#9fb4c9;border-radius:8px;padding:4px 10px;font-size:12px;cursor:pointer">✕ 关闭</button>
+    </div>
+    <ol style="margin:0;padding-left:20px;font-size:13.5px;line-height:2;color:#c8d6e5">
+      <li><b>点击任何图表</b>（柱/饼/地图/漏斗/热力等）即可联动筛选，顶部出现标签；点标签 × 或「清空全部」恢复。</li>
+      <li><b>地图钻取</b>：点中国 → 省 → 市逐级下钻；点其它国家 → 联动筛选。面包屑「全国/全球」一键返回。</li>
+      <li><b>主题切换</b>：右上角下拉框实时换肤（10 套），选择自动记忆。</li>
+      <li><b>图表样式</b>：横向/柱状（维度排行）· 面积/曲线（月度走势）切换。</li>
+      <li><b>导出</b>：右上角「⬇ 导出 PNG」可把全部图表存为图片。</li>
+      <li><b>安全</b>：本看板数据已脱敏；带锁看板需密码查看（访客密码=聚合视图）。</li>
+      <li><b>离线可用</b>：单文件打开即用，断网不影响；手机浏览器同样适配。</li>
+    </ol>
+    <div style="margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,.07);font-size:12px;color:#7d93a8">
+      ⚠ 缺失字段按规范显示为「未提供」，详见文末/报告补充说明（* 标注）。
+    </div>
+  </div>
+</div>
 </body>
 </html>
