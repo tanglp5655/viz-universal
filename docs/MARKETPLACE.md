@@ -9,7 +9,7 @@
 
 | 字段 | 内容 |
 | --- | --- |
-| 显示名 | 跨行业通用可视化（viz-universal） |
+| 显示名 | 跨行业通用可视化（数据看板生成器） |
 | 技术名 | viz-universal |
 | 分类 | 数据 / 分析（Data & Analytics） |
 | 标签 | 数据可视化, 看板, 图表, 中国地图, 报表, 脱敏, 加密, dashboard, ECharts, BI |
@@ -49,7 +49,7 @@
 
 ## 三、英文介绍（如市场要求双语）
 
-**Display name**: viz-universal — Cross-industry Data Dashboard Generator
+**Display name**: 跨行业通用可视化（数据看板生成器） — Cross-industry Data Dashboard Generator (viz-universal)
 **Category**: Data & Analytics
 **Tags**: data-viz, dashboard, charts, china-map, report, anonymize, encrypt, ECharts, BI
 
