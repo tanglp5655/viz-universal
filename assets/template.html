@@ -1281,18 +1281,15 @@ function normGeoName(n){ if(!n) return n;
 function buildGeoAlias(){
   geoAlias = {}; geoNameAlias = {};
   if(!GEO) return;
-  if(GEO.world){
-    // 世界地图：无 adcode，name 即 key
-    (GEO.geoJSONs['world'].features||[]).forEach(function(f){
-      var nm=f.properties && f.properties.name;
-      if(nm){ geoAlias[nm]=nm; geoNameAlias[nm]=nm; }
-    });
-    return;
-  }
+  // 通用：对每份边界 features 建别名映射；有 adcode 用 adcode（中国省市），无 adcode 用 name（世界/州界）
   Object.keys(GEO.geoJSONs).forEach(function(k){
     (GEO.geoJSONs[k].features||[]).forEach(function(f){
-      var p=f.properties||{}, nm=p.name, ad=p.adcode;
-      if(nm&&ad){ geoAlias[nm]=String(ad); geoAlias[normGeoName(nm)]=String(ad); geoNameAlias[nm]=nm; geoNameAlias[normGeoName(nm)]=nm; }
+      var p=f.properties||{}, nm=p.name || p.shapeName;
+      if(!nm) return;
+      var key = (p.adcode!=null) ? String(p.adcode) : nm;
+      geoAlias[nm]=key; geoAlias[normGeoName(nm)]=key;
+      geoNameAlias[nm]=nm; geoNameAlias[normGeoName(nm)]=nm;
+      if(p._fullName && p._fullName!==nm){ geoNameAlias[p._fullName]=nm; geoNameAlias[normGeoName(p._fullName)]=nm; }
     });
   });
 }
@@ -1445,6 +1442,13 @@ function geoGoto(path){
     else {
       var en = (GEO.nameMap && GEO.nameMap[geoCrumbs[0]]) || geoCrumbs[0];
       geoCurKey = GEO.geoJSONs[en] ? en : '';   // 有该国州/省界 → 地图下钻；否则柱状排行兜底
+      if(geoCrumbs.length>=2){
+        // 中国内：省→市（区）级 → 用 adcode 查下级边界
+        var nm2 = geoCrumbs[geoCrumbs.length-1];
+        var ad2 = geoAlias[normGeoName(nm2)] || geoAlias[nm2];
+        if(ad2 && GEO.geoJSONs[ad2]) geoCurKey = ad2;
+        else geoCurKey = '';   // 无该层级边界 → 柱状排行兜底
+      }
     }
   }
   else if(geoCrumbs.length===0) geoCurKey='100000';

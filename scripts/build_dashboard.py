@@ -275,7 +275,38 @@ def build_geo(rows, meta):
                         with open(GEO_PROV, encoding='utf-8') as fp:
                             geoJSONs['China'] = json.load(fp)
                     except Exception:
-                        pass
+                        continue
+                    # 中国内 省→市→区 三级（复用中国模式拉取逻辑，联网失败自动降级）
+                    p_alias = {}
+                    for f in geoJSONs['China']['features']:
+                        p = f.get('properties') or {}
+                        pnm, pad = p.get('name'), p.get('adcode')
+                        if pnm and pad:
+                            p_alias[pnm] = str(pad)
+                            p_alias[_norm_geo(pnm)] = str(pad)
+                    for prov_nm, pnode in (node.get('children') or {}).items():
+                        pad = p_alias.get(prov_nm) or p_alias.get(_norm_geo(prov_nm))
+                        if not pad:
+                            continue
+                        cg = _fetch_geo(pad)
+                        if not cg:
+                            continue
+                        geoJSONs[pad] = cg
+                        c_alias = {}
+                        for f in cg['features']:
+                            p = f.get('properties') or {}
+                            cnm, cad = p.get('name'), p.get('adcode')
+                            if cnm and cad:
+                                c_alias[cnm] = str(cad)
+                                c_alias[_norm_geo(cnm)] = str(cad)
+                        if 'city' in rk and ('county' in rk or 'dist' in rk):
+                            for city_nm in (pnode.get('children') or {}):
+                                cad = c_alias.get(city_nm) or c_alias.get(_norm_geo(city_nm))
+                                if not cad:
+                                    continue
+                                dg = _fetch_geo(cad)
+                                if dg:
+                                    geoJSONs[cad] = dg
                     continue
                 sub = fetch_sub_geo(en)
                 if sub:
