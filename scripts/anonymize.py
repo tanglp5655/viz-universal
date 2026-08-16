@@ -113,8 +113,8 @@ def load_industry(name):
 def norm_payment(v, remap=None, keywords=None, unknown='__keep__'):
     """把任意支付方式写法归并；remap=None 时原样保留（不归并）。unknown='__keep__' 保留原值，否则归入该档。"""
     s = str(v).strip()
-    if not s or s == '未填写':
-        return '未填写'
+    if not s or s == '未提供':
+        return '未提供'
     if remap:
         if s in remap:
             return remap[s]
@@ -351,7 +351,7 @@ def build(records, level='L2', scale=1.0, date_shift=0, mapping=None,
             elif role == 'demographic' and k == 'age':
                 rec[k] = norm_num(v)
             else:
-                rec[k] = str(v).strip() if v not in (None, '') else '未填写'
+                rec[k] = str(v).strip() if v not in (None, '') else '未提供'
         if not rec.get('d') or not rec.get('a'):
             continue
         out.append(rec)

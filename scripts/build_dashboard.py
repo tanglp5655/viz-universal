@@ -237,7 +237,7 @@ def build_geo(rows, meta):
         node = root
         for key in rk:
             nm = r.get(key)
-            if not nm or nm == '未填写':
+            if not nm or nm == '未提供':
                 break   # 缺失/占位值不进入地区层级（如无省份数据的国家）
             if nm not in node:
                 node[nm] = {'a': 0, 'c': 0, 'children': {}}
