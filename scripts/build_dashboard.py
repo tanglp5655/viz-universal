@@ -237,8 +237,8 @@ def build_geo(rows, meta):
         node = root
         for key in rk:
             nm = r.get(key)
-            if not nm:
-                break
+            if not nm or nm == '未填写':
+                break   # 缺失/占位值不进入地区层级（如无省份数据的国家）
             if nm not in node:
                 node[nm] = {'a': 0, 'c': 0, 'children': {}}
             node[nm]['a'] += a
@@ -264,9 +264,12 @@ def build_geo(rows, meta):
         if name_map and len(name_map) < len(root):
             print('  ⚠ 部分国家名未匹配到世界地图：%s（参考 references/country_map.json）'
                   % '、'.join(k for k in root if k not in name_map))
-        # 国家内下钻：数据含 省/州 列时，挂载该国的州/省界地图（按需：缓存 → geoBoundaries API → 失败降级柱状）
+        # 国家内下钻：仅对"数据中真有省/州值"的国家挂载州/省界地图（按需：缓存 → geoBoundaries API → 失败降级柱状）
         if 'prov' in rk:
-            for en in set(name_map.values()):
+            for nm, node in root.items():
+                if not (node.get('children') or {}):
+                    continue   # 该国无下级数据（如只有国家列的值）→ 不加载地图，保持国家级联动
+                en = name_map.get(nm, nm)
                 if en == 'China':
                     try:
                         with open(GEO_PROV, encoding='utf-8') as fp:
