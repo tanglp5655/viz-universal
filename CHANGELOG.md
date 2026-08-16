@@ -2,6 +2,16 @@
 
 本项目遵循语义化版本；重大功能与修复在此记录。
 
+## [0.7.0] - 2026-08-16 — 运行时主题下拉切换
+
+### 新增
+- **顶部「主题」下拉菜单**：生成时注入全部 10 套主题（CSS + 数据），用户打开看板即可下拉切换视觉主题并**实时预览**（切换 → 全盘重绘，图表/地图同步换肤）。
+  - 10 套：Apple 液态玻璃 / Stripe 科技渐变 / Vercel 极简纯黑 / Linear 深紫靛蓝 / Bloomberg 终端 / Notion 暖白编辑 / Neubrutalism 撞色 / Tokyo Night / Nordic MUJI / Cyberpunk 霓虹
+  - 选择记入 `localStorage`，下次打开自动恢复
+  - 未指定 `--theme` 时默认 apple-glass，外观与之前一致
+- 实现：`themes.py` 新增 `theme_data/all_themes_html/all_themes_js`；`build_dashboard.py` 注入全部主题；`template.html` 新增 `initThemeSel/switchTheme`。
+- 回归 90/90 全过。
+
 ## [0.6.0] - 2026-08-15 — 国家州/省界按需自动下载
 
 ### 新增

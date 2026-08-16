@@ -356,6 +356,37 @@ def override_css(tid):
     )
 
 
+def theme_data(tid):
+    """返回单套主题的完整数据（window.THEME 结构 + 展示名），供运行时下拉切换。"""
+    if tid not in THEMES:
+        tid = DEFAULT_THEME
+    t = THEMES[tid]
+    return {
+        "palette": t["palette"], "mcolor": _mcolor(t),
+        "accent": t["accent"], "text": t["text"], "text2": t["text2"],
+        "grid": t["grid"], "axis": t["axis"], "tooltipBg": t["tooltipBg"],
+        "mapVisualMap": t["mapVisualMap"], "mapArea": t["mapArea"],
+        "label_cn": t["label_cn"], "label_en": t["label_en"],
+    }
+
+
+def all_themes_html(active):
+    """全部主题的 <style class="theme-css"> 块（仅激活一套），供运行时下拉切换。"""
+    out = []
+    for tid in THEMES:
+        hidden = ' style="display:none"' if tid != active else ''
+        out.append('<style class="theme-css" data-theme="%s"%s>%s</style>'
+                   % (tid, hidden, override_css(tid)))
+    return '\n'.join(out)
+
+
+def all_themes_js(active):
+    """全部主题数据 + 默认激活主题（window.THEMES / window.THEME）。"""
+    data = {tid: theme_data(tid) for tid in THEMES}
+    return ("window.THEMES=%s;window.THEME=window.THEMES['%s'];"
+            % (json.dumps(data, ensure_ascii=False), active))
+
+
 if __name__ == "__main__":
     import sys
     if len(sys.argv) > 1 and sys.argv[1] == "--list":

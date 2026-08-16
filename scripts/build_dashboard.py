@@ -44,7 +44,8 @@ from errors import EXIT_OK, EXIT_USAGE, EXIT_CONFIG, EXIT_RUNTIME, err, warn, in
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 try:
     sys.path.insert(0, os.path.join(BASE, 'scripts'))
-    from themes import THEMES, list_themes, override_css, window_js, DEFAULT_THEME as _DEF_THEME
+    from themes import (THEMES, list_themes, override_css, window_js,
+                        all_themes_html, all_themes_js, DEFAULT_THEME as _DEF_THEME)
 except Exception:
     THEMES = None
 TPL = os.path.join(BASE, 'assets', 'template.html')
@@ -529,14 +530,16 @@ def main():
 
     with open(TPL, encoding='utf-8') as fp:
         html = fp.read()
-    # 主题皮肤注入（--theme）：覆盖页面 chrome + 暴露 window.THEME 供图表取色
-    if args.theme and THEMES and args.theme in THEMES:
-        tid = args.theme
-        html = html.replace('</head>', '<style id="theme-override">%s</style></head>' % override_css(tid))
-        html = html.replace('<body>', '<body><script>%s</script>' % window_js(tid))
-        print('🎨 已应用主题：%s' % tid)
-    elif args.theme:
-        print('⚠ 未知主题 %s，已忽略（可用 --list-themes 查看）' % args.theme)
+    # 主题皮肤注入：注入全部 10 套主题（运行时下拉切换），激活 --theme 或默认 apple-glass
+    if THEMES:
+        tid = args.theme if (args.theme and args.theme in THEMES) else _DEF_THEME
+        html = html.replace('</head>',
+                            all_themes_html(tid)
+                            + '<script>' + all_themes_js(tid) + '</script></head>')
+        if args.theme and args.theme in THEMES:
+            print('🎨 已应用主题：%s（运行时可用顶部下拉切换全部主题）' % args.theme)
+        elif args.theme:
+            print('⚠ 未知主题 %s，已用默认 %s（可用 --list-themes 查看）' % (args.theme, _DEF_THEME))
     with open(CRYPTO, encoding='utf-8') as fp:
         cjs = fp.read()
     if args.cdn:
