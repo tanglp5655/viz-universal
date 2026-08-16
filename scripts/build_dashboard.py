@@ -448,6 +448,10 @@ def main():
     ap.add_argument('--list-themes', action='store_true', help='列出全部可选视觉主题后退出')
     ap.add_argument('--report', default=None, metavar='PATH',
                     help='【可选】同时生成经营分析报告 HTML 到 PATH（规则引擎，离线可用：概览/走势/构成/地区/风险/建议/缺失说明）')
+    ap.add_argument('--live', default=None, metavar='URL',
+                    help='【可选】实时大屏：指向脱敏 JSON 数据源 URL，看板每 N 秒自动拉取并刷新全部图表（数据源需为 anonymize 产出的 masked JSON，且该 URL 可被浏览器 fetch）')
+    ap.add_argument('--live-interval', type=int, default=30,
+                    help='实时刷新间隔（秒，默认 30）')
     ap.add_argument('--iter', type=int, default=DEFAULT_ITERATIONS)
     args = ap.parse_args()
 
@@ -602,8 +606,16 @@ def main():
     # 主题皮肤注入：注入全部 10 套主题（运行时下拉切换），激活 --theme 或默认 apple-glass
     if THEMES:
         tid = args.theme if (args.theme and args.theme in THEMES) else _DEF_THEME
+        # 实时数据源注入（--live）：看板定时拉取最新脱敏 JSON 自动刷新（大屏场景）
+        _live_js = ''
+        if args.live:
+            _live_js = ('<script>window.LIVE_DATA={url:%s,interval:%d};</script>'
+                        % (json.dumps(args.live), args.live_interval or 30))
+            print('🔴 实时大屏已开启：每 %d 秒自动拉取 %s 并刷新全部图表'
+                  % (args.live_interval or 30, args.live))
         html = html.replace('</head>',
-                            all_themes_html(tid)
+                            _live_js
+                            + all_themes_html(tid)
                             + '<script>' + all_themes_js(tid) + '</script></head>')
         if args.theme and args.theme in THEMES:
             print('🎨 已应用主题：%s（运行时可用顶部下拉切换全部主题）' % args.theme)

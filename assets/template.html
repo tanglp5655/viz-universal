@@ -899,8 +899,40 @@ function switchTheme(tid){
   if(typeof render === 'function') render();   // 全盘重绘 → 实时换肤
 }
 
+/* ========== 实时数据源（大屏自动刷新） ========== */
+// build 时用 --live <URL> --live-interval <秒> 注入 window.LIVE_DATA = {url, interval}
+function liveLoad(){
+  if(!window.LIVE_DATA || !window.LIVE_DATA.url || typeof fetch !== 'function') return;
+  fetch(window.LIVE_DATA.url)
+    .then(function(resp){ return resp.ok ? resp.json() : Promise.reject('HTTP ' + resp.status); })
+    .then(function(data){
+      if(!data || !data.rows || !data.rows.length) return;
+      D.rows = data.rows;
+      if(data.dims) D.dims = data.dims;
+      if(data.meta) D.meta = data.meta;
+      if(data.level) D.level = data.level;
+      if(data.title) D.title = data.title;
+      FILTERS = {}; QUERY = ''; SHOWN = 60; REGIONPATH = [];
+      var tb = document.getElementById('tTitle');
+      if(tb && D.title) tb.innerHTML = D.title + (D.level && D.level !== 'L0' ? ' <span class="badge">已脱敏 ' + D.level + '</span>' : '');
+      var ft = document.getElementById('foot');
+      if(ft) ft.innerHTML = '共 ' + D.rows.length + ' 条记录 · 实时数据源自动刷新 · 数据已脱敏，仅供内部管理决策使用<br>请勿转发截图至外部渠道';
+      render();
+      var badge = document.getElementById('liveBadge');
+      if(badge){ badge.textContent = '● 实时 ' + new Date().toLocaleTimeString(); }
+    })
+    .catch(function(){ /* 拉取失败静默，下一轮重试 */ });
+}
+
 function init(){
   initThemeSel();
+  // 实时数据源：启动定时拉取（大屏自动刷新）
+  if(window.LIVE_DATA && window.LIVE_DATA.url && typeof fetch === 'function'){
+    var iv = window.LIVE_DATA.interval || 30;
+    setInterval(liveLoad, iv * 1000);
+    var sb = document.getElementById('tSub');
+    if(sb && sb.textContent.indexOf('实时') < 0) sb.textContent += (sb.textContent ? ' · ' : '') + '实时数据源每 ' + iv + 's 自动刷新';
+  }
   document.getElementById('tTitle').innerHTML = D.title
     + (VIEWER_MODE ? '<span class="badge" style="background:rgba(255,184,108,.15);color:#ffb86c">访客视图 · 部分数据</span>' : '')
     + (D.level&&D.level!=='L0' ? '<span class="badge">已脱敏 '+D.level+'</span>' : '');
