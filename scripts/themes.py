@@ -371,12 +371,12 @@ def theme_data(tid):
 
 
 def all_themes_html(active):
-    """全部主题的 <style class="theme-css"> 块（仅激活一套），供运行时下拉切换。"""
+    """全部主题的 <style class="theme-css"> 块（仅激活一套 enabled），供运行时下拉切换。"""
     out = []
     for tid in THEMES:
-        hidden = ' style="display:none"' if tid != active else ''
-        out.append('<style class="theme-css" data-theme="%s"%s>%s</style>'
-                   % (tid, hidden, override_css(tid)))
+        disabled = '' if tid == active else 'disabled'
+        out.append('<style class="theme-css" data-theme="%s" %s>%s</style>'
+                   % (tid, disabled, override_css(tid)))
     return '\n'.join(out)
 
 

@@ -875,9 +875,9 @@ function initThemeSel(){
   if(window.THEME){ cur = names.filter(function(k){ return window.THEMES[k].palette[0]===window.THEME.palette[0]; })[0] || names[0]; }
   var tid = (saved && window.THEMES[saved]) ? saved : cur;
   sel.value = tid;
-  // 恢复已保存/当前主题：切换 CSS 激活 + 更新图表取色（首屏即生效）
+  // 恢复已保存/当前主题：只启用选中主题的 <style>（关键：disabled 才能真正禁用 CSS 规则）
   document.querySelectorAll('.theme-css').forEach(function(el){
-    el.style.display = (el.dataset.theme===tid) ? '' : 'none';
+    el.disabled = (el.dataset.theme !== tid);
   });
   if(window.THEMES[tid]) window.THEME = window.THEMES[tid];
   sel.addEventListener('change', function(){ switchTheme(sel.value); });
@@ -885,8 +885,9 @@ function initThemeSel(){
 
 function switchTheme(tid){
   if(!window.THEMES || !window.THEMES[tid]) return;
+  // 切换：禁用非激活 <style>、启用激活；更新图表配色；重绘
   document.querySelectorAll('.theme-css').forEach(function(el){
-    el.style.display = (el.dataset.theme===tid) ? '' : 'none';
+    el.disabled = (el.dataset.theme !== tid);
   });
   window.THEME = window.THEMES[tid];
   try{ localStorage.setItem('vizTheme', tid); }catch(e){}
