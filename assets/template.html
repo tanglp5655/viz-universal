@@ -313,8 +313,12 @@ function exportAllPng(){
     a.download = ('看板-' + it[0] + '-' + (idx+1) + '.png').replace(/[\/\\:*?"<>|]/g,'_');
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
   });
+  if(items.length){ alert('已触发导出 ' + items.length + ' 张图表 PNG，请查看浏览器下载目录；若未下载，请把 HTML 下载到本地打开后再试（网页预览环境可能拦截下载）。'); }
 }
-document.getElementById('exportPng').addEventListener('click', exportAllPng);
+document.addEventListener('DOMContentLoaded', function(){
+  var eb = document.getElementById('exportPng');
+  if(eb) eb.addEventListener('click', exportAllPng);
+});
 
 /* ========== 工具 ========== */
 function sum(a){var s=0;for(var i=0;i<a.length;i++)s+=a[i];return s}
