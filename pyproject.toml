@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "viz-universal"
-version = "0.8.1"
+version = "0.8.2"
 description = "跨行业通用数据可视化：把 Excel/CSV/JSON 转成脱敏+密码加密的单文件交互看板（图表/中国地图钻取/人物画像）"
 readme = "README.md"
 requires-python = ">=3.10"
