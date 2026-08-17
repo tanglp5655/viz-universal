@@ -348,8 +348,13 @@ def build_deep(rows, dims, months, r):
             cagg[x.get('c', '-')] = cagg.get(x.get('c', '-'), 0) + x.get('a', 0)
         cs = sorted(cagg.items(), key=lambda kv: -kv[1])
         if cs:
-            ins.append('课程结构：Top1「%s」占 %.0f%%，Top3 合计 %.0f%%（%s）'
-                       % (cs[0][0], cs[0][1] / total * 100,
+            _c_label = '主营结构'
+            for _d in dims:
+                if _d.get('key') == 'c' and _d.get('label'):
+                    _c_label = _d['label']
+                    break
+            ins.append('%s：Top1「%s」占 %.0f%%，Top3 合计 %.0f%%（%s）'
+                       % (_c_label, cs[0][0], cs[0][1] / total * 100,
                           sum(v for _, v in cs[:3]) / total * 100,
                           ' / '.join(n for n, _ in cs[:3])))
     # 来源结构（新生/老生）
