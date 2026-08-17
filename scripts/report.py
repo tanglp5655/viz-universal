@@ -589,64 +589,71 @@ def render_html(r, title='经营分析报告', theme='apple-glass'):
     sec.append('<h3>五、行动建议</h3><ul>%s</ul>'
                % ''.join('<li>%s</li>' % t for t in r.get('tips', [])))
 
-    # 深度分析（交叉 / 驱动分解 / 签单人矩阵 / 结构洞察）
+    # 深度分析（文字叙述为主、表格为辅——对齐专业经营报告风格）
     _dp = r.get('deep') or {}
     dsec = []
+    # 交叉组合（叙述）
     if _dp.get('cross'):
-        dsec.append('<h3>六、交叉分析（来源 × 项目 Top 组合）</h3><table><tr><th>组合</th><th>金额</th><th>占比</th></tr>%s</table>'
-                    % ''.join('<tr><td>%s → %s</td><td>%s</td><td>%.1f%%</td></tr>'
-                              % (c['k1'], c['k2'], money_fn(c['a']), c['pct']) for c in _dp['cross']))
+        top3 = _dp['cross'][:3]
+        items = '、'.join('「%s→%s」%s（%.1f%%）' % (c['k1'], c['k2'], money_fn(c['a']), c['pct']) for c in top3)
+        dsec.append('<h3>交叉结构</h3><p>主力组合集中于 %s，反映核心客群与主打产品的高度绑定。%s</p>'
+                    % (items, ('其余组合占比分散' if len(_dp['cross']) > 3 else '')))
+    # 驱动分解（叙述）
     if _dp.get('drivers'):
-        dsec.append('<h3>七、环比驱动分解（%s → %s）</h3>'
-                    % (_dp['drivers'][0]['pair'][0], _dp['drivers'][0]['pair'][1]))
-        for dr in _dp['drivers']:
-            items = '、'.join('「%s」%s' % (k, ('+%s' % money_fn(v)) if v >= 0 else ('-%s' % money_fn(-v)))
-                              for k, v in dr['top'])
-            dsec.append('<p><b>%s</b>：%s</p>' % (dr['key'], items))
+        d0 = _dp['drivers'][0]
+        pos = [('「%s」%s' % (k, ('+%s' % money_fn(v)) if v >= 0 else ('-%s' % money_fn(-v)))) for k, v in d0['top'][:2]]
+        dsec.append('<h3>增长/下滑驱动</h3><p>环比变动主要由 %s 贡献；分维度看，%s。</p>'
+                    % ('、'.join(pos),
+                       '；'.join('%s 维度：%s' % (dr['key'],
+                                 '、'.join('「%s」%s' % (k, ('+%s' % money_fn(v)) if v >= 0 else ('-%s' % money_fn(-v)))
+                                           for k, v in dr['top'][:2])) for dr in _dp['drivers'][1:])))
+    # 签单人（叙述 + 辅助矩阵）
     if _dp.get('signer_matrix'):
-        rows_m = ''.join('<tr><td>%s</td>%s<td>%s</td></tr>' % (
-            s['s'], ''.join('<td>%s</td>' % money_fn(s['by_month'].get(m, 0)) for m in r.get('months', [])),
-            s.get('status', ''))
-            for s in _dp['signer_matrix'])
-        dsec.append('<h3>八、签单人月度贡献（含个人状态）</h3><table><tr><th>签单人</th>%s<th>状态</th></tr>%s</table>'
-                    % (''.join('<th>%s</th>' % m for m in r.get('months', [])), rows_m))
-    # 客单分位段
+        st_txt = '；'.join('「%s」%s' % (s['s'], s.get('status', '')) for s in _dp['signer_matrix'])
+        dsec.append('<h3>签单人表现</h3><p>头部签单人：%s。%s</p>'
+                    % (st_txt,
+                       ('Top1「%s」累计贡献 %.0f%%，存在单点依赖风险'
+                        % (_dp['signer_matrix'][0]['s'],
+                           sum(_dp['signer_matrix'][0]['by_month'].values()) / max(r.get('total', 1), 1) * 100)
+                        if sum(_dp['signer_matrix'][0]['by_month'].values()) / max(r.get('total', 1), 1) > 0.4 else '')))
+    # 客单结构（叙述）
     if _dp.get('price_bands'):
-        bands = ''.join('<tr><td>%s</td><td>%d 笔</td></tr>' % (k, v) for k, v in _dp['price_bands'].items())
         pj = _dp.get('price_segments') or {}
+        seg_txt = '、'.join('「%s」%d 笔' % (k, v) for k, v in _dp['price_bands'].items())
         pj_txt = ''
         if pj:
-            pj_txt = '<p class="note2">客单中位 %s / P75 %s / 均值 %s；高客单段（>P75）占 %.0f%%</p>' % (
-                money_fn(pj.get('p50', 0)), money_fn(pj.get('p75', 0)), money_fn(pj.get('mean', 0)), pj.get('high_ratio', 0))
-        dsec.append('<h3>客单结构</h3><table><tr><th>客单段</th><th>笔数</th></tr>%s</table>%s' % (bands, pj_txt))
-    # 老师结构
+            pj_txt = '客单中位 %s、P75 %s、均值 %s，高客单段（>P75）占 %.0f%%%s。' % (
+                money_fn(pj.get('p50', 0)), money_fn(pj.get('p75', 0)), money_fn(pj.get('mean', 0)),
+                pj.get('high_ratio', 0),
+                '，客单结构整体偏高' if pj.get('high_ratio', 0) >= 40 else ('，客单中位低于均值，存在右偏' if pj.get('mean', 0) > pj.get('p50', 0) else ''))
+        dsec.append('<h3>客单结构</h3><p>%s %s</p>' % (seg_txt, pj_txt))
+    # 老师结构（叙述）
     if _dp.get('teacher'):
-        trows = ''.join('<tr><td>%s%s</td><td>%s</td><td>%.0f%%</td></tr>' % (
-            t['name'], '（兜底标签）' if t['name'] in (_dp.get('teacher_fallback') or []) else '',
-            money_fn(t['a']), t['pct']) for t in _dp['teacher'])
-        dsec.append('<h3>服务人员结构</h3><table><tr><th>人员</th><th>金额</th><th>占比</th></tr>%s</table>' % trows)
-    # 校区维度
+        fb = _dp.get('teacher_fallback') or []
+        t_txt = '、'.join('「%s」%s（%.0f%%）' % (t['name'], money_fn(t['a']), t['pct']) for t in _dp['teacher'][:3])
+        dep = _dp.get('teacher_dep', 0)
+        dsec.append('<h3>服务人员结构</h3><p>头部服务人员：%s%s%s。</p>'
+                    % (t_txt,
+                       ('；Top1 依赖度 %.0f%%，存在单点依赖' % dep) if dep >= 30 else '',
+                       ('；「%s」为兜底标签，建议拆分口径' % fb[0]) if fb else ''))
+    # 校区维度（叙述）
     if _dp.get('campus'):
-        crows = ''.join('<tr><td>%s</td><td>%s</td><td>%.0f%%</td></tr>' % (c['name'], money_fn(c['a']), c['pct'])
-                        for c in _dp['campus'])
-        new_txt = ''
-        if _dp.get('campus_new'):
-            new_txt = '<p class="note2">新增：%s</p>' % '、'.join(_dp['campus_new'])
-        dsec.append('<h3>场所/门店结构</h3><table><tr><th>场所</th><th>金额</th><th>占比</th></tr>%s</table>%s'
-                    % (crows, new_txt))
-    # 扩科专项
+        c_txt = '、'.join('「%s」%s（%.0f%%）' % (c['name'], money_fn(c['a']), c['pct']) for c in _dp['campus'][:3])
+        new_txt = ('；新增场所：%s' % '、'.join(_dp['campus_new'])) if _dp.get('campus_new') else ''
+        dsec.append('<h3>场所/门店结构</h3><p>头部场所：%s。%s</p>' % (c_txt, new_txt))
+    # 扩科专项（叙述）
     if _dp.get('expansion'):
         ex = _dp['expansion']
         prev_txt = ''
         if ex.get('prev_a'):
-            prev_txt = '（上月 %d 笔 %s，单数增长 %.0f 倍）' % (
+            prev_txt = '；环比上月 %d 笔 %s，单数增长 %.0f 倍' % (
                 ex['prev_n'], money_fn(ex['prev_a']),
                 ex['n'] / ex['prev_n'] if ex.get('prev_n') else 0)
         topc = '、'.join('「%s」%s' % (n, money_short(v)) for n, v in ex.get('top_c', []))
-        dsec.append('<h3>「%s」专项</h3><p>本月 %d 笔 %s，占 %.1f%%%s；科目：%s。</p>'
+        dsec.append('<h3>「%s」专项</h3><p>本月 %d 笔 %s，占 %.1f%%%s，集中于 %s——属于高价值增量，建议持续加码。</p>'
                     % (ex['kw'], ex['n'], money_fn(ex['a']), ex['pct'], prev_txt, topc))
     if _dp.get('insights'):
-        dsec.append('<h3>九、结构洞察</h3><ul>%s</ul>'
+        dsec.append('<h3>结构洞察</h3><ul>%s</ul>'
                     % ''.join('<li>%s</li>' % i for i in _dp['insights']))
     if dsec:
         sec.append('\n'.join(dsec))
@@ -684,30 +691,32 @@ def render_html(r, title='经营分析报告', theme='apple-glass'):
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{title}</title>
 <style>
-body{{background:#0b1219;color:#c8d6e5;font-family:-apple-system,'PingFang SC','Microsoft YaHei',sans-serif;margin:0;padding:32px 16px;line-height:1.7}}
-.wrap{{max-width:760px;margin:0 auto}}
-h1{{font-size:22px;color:#fff;margin:0 0 4px}} h2{{font-size:14px;color:#5b7fff;font-weight:600;margin:28px 0 10px;border-left:3px solid #5b7fff;padding-left:10px}}
-h3{{font-size:16px;color:#fff;margin:22px 0 8px}}
-p{{margin:6px 0;font-size:14px}} .sub{{color:#7d93a8;font-size:12px;margin-bottom:18px}}
-.kpis{{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:18px 0}}
-.kpi{{background:#13202e;border:1px solid rgba(90,140,220,.14);border-radius:12px;padding:14px}}
-.kpi .v{{font-size:18px;font-weight:700;color:#fff}} .kpi .l{{font-size:11px;color:#7d93a8;margin-top:4px}}
-table{{width:100%;border-collapse:collapse;font-size:13px;margin:8px 0}}
-th{{background:#13202e;color:#9fb4c9;text-align:left;padding:8px 10px}} td{{padding:7px 10px;border-bottom:1px solid rgba(255,255,255,.05)}}
-ul{{padding-left:18px;font-size:14px}} li{{margin:5px 0}}
-.note{{background:rgba(255,184,108,.06);border:1px solid rgba(255,184,108,.25);border-radius:12px;padding:14px 18px;margin-top:26px;font-size:13px}}
-.note sup{{color:#ffb86c}} .tag{{display:inline-block;font-size:11px;color:#ffb86c;border:1px solid rgba(255,184,108,.4);border-radius:20px;padding:2px 10px;margin-left:8px;vertical-align:middle}}
-.dc{{background:rgba(91,127,255,.05);border:1px solid rgba(91,127,255,.22);border-radius:12px;padding:14px 18px;margin:14px 0}} .dc p{{margin:6px 0}}
-.warn{{background:rgba(232,118,122,.08);border:1px solid rgba(232,118,122,.4);border-radius:12px;padding:12px 16px;margin:14px 0;font-size:13.5px;color:#e8b4b7}}
-.sum{{background:rgba(79,208,192,.07);border:1px solid rgba(79,208,192,.35);border-radius:12px;padding:12px 16px;margin:14px 0;font-size:14px}}
-.note2{{color:#7d93a8;font-size:12px}} .dc table{{font-size:12.5px}}
-@media print{{body{{background:#fff;color:#222}}.kpi{{background:#f3f6fa;border-color:#dfe6ee}}.kpi .v{{color:#111}}h1,h3{{color:#111}}th{{background:#f3f6fa;color:#445}}}}
-</style></head><body><div class="wrap">
+body{{background:#f2f5fa;color:#2b3445;font-family:-apple-system,'PingFang SC','Microsoft YaHei',sans-serif;margin:0;padding:34px 16px;line-height:1.7}}
+.wrap{{max-width:820px;margin:0 auto}}
+.paper{{background:#fff;border:1px solid #e4e9f2;border-radius:14px;padding:34px 40px;box-shadow:0 2px 18px rgba(30,60,120,.05)}}
+h1{{font-size:23px;color:#1f2d4d;margin:0 0 6px;letter-spacing:.5px}} h2{{font-size:13px;color:#5b7fff;font-weight:600;margin:26px 0 10px}}
+h3{{font-size:16px;color:#1f2d4d;margin:20px 0 8px;padding-left:10px;border-left:4px solid #5b7fff}}
+p{{margin:6px 0;font-size:13.5px;color:#3a465e}}
+.sub{{color:#7c8aa5;font-size:12px;margin-bottom:14px;border-bottom:1px solid #eef1f8;padding-bottom:12px}}
+.kpis{{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:16px 0}}
+.kpi{{background:#f7f9fd;border:1px solid #e6ebf5;border-radius:10px;padding:14px}}
+.kpi .v{{font-size:20px;font-weight:700;color:#1f2d4d}} .kpi .l{{font-size:11px;color:#7c8aa5;margin-top:4px}}
+table{{width:100%;border-collapse:collapse;font-size:12.8px;margin:8px 0}}
+th{{background:#f3f6fb;color:#33415c;text-align:left;padding:8px 10px;font-weight:600}} td{{padding:7px 10px;border-bottom:1px solid #eef1f8}}
+ul{{padding-left:18px;font-size:13.5px;color:#3a465e}} li{{margin:5px 0}}
+.note{{background:#fff8ef;border:1px solid #f3d9b0;border-radius:10px;padding:14px 18px;margin-top:22px;font-size:13px;color:#6b5a3a}}
+.note sup{{color:#d9912f}} .tag{{display:inline-block;font-size:11px;color:#5b7fff;background:#eef3ff;border:1px solid #cdd9f7;border-radius:20px;padding:2px 10px;margin-left:8px;vertical-align:middle}}
+.dc{{background:#f8faff;border:1px solid #dbe4f7;border-radius:10px;padding:14px 18px;margin:14px 0}} .dc p{{margin:6px 0}}
+.warn{{background:#fef2f2;border:1px solid #f5c6c8;border-radius:10px;padding:12px 16px;margin:14px 0;font-size:13.5px;color:#a24a4e}}
+.sum{{background:#eefaf6;border:1px solid #b5e6d6;border-radius:10px;padding:12px 16px;margin:14px 0;font-size:14px;color:#1f5c4a}}
+.note2{{color:#7c8aa5;font-size:12px}} .dc table{{font-size:12.3px}}
+@media print{{body{{background:#fff}} .paper{{border:none;box-shadow:none;padding:0}}}}
+</style></head><body><div class="wrap"><div class="paper">
 <h1>{title}<span class="tag">已脱敏 {level}</span></h1>
 <div class="sub">生成时间 {ts} · 数据 {rows} 条 · 覆盖月份 {months}</div>
 {sections}
 {foot}
-</div></body></html>""".format(
+</div></div></body></html>""".format(
         title=title, level=r.get('level', 'L0'), ts='2026-08-16', rows=r.get('rows', 0),
         months=' / '.join(r.get('months', [])), sections='\n'.join(sec), foot=foot)
     return html
@@ -844,66 +853,68 @@ def render_md(r, title='经营分析决策简报'):
         for a in dc.get('actions', []):
             L.append('| %s | %s | %s | %s |' % (a['action'], a['owner'], a['due'], a.get('benefit', '')))
         L.append('')
-    # 深度分析（交叉/驱动/矩阵/洞察）
+    # 深度分析（文字叙述为主、表格为辅）
     _dp = r.get('deep') or {}
     if _dp.get('cross') or _dp.get('drivers') or _dp.get('insights'):
         L.append('## 深度分析')
         L.append('')
         if _dp.get('cross'):
-            L.append('**交叉组合（来源 × 项目 Top6）**：')
-            L.append('| 组合 | 金额 | 占比 |')
-            L.append('|---|---|---|')
-            for c in _dp['cross']:
-                L.append('| %s → %s | %s | %.1f%% |' % (c['k1'], c['k2'], money_fn(c['a']), c['pct']))
+            top3 = _dp['cross'][:3]
+            items = '、'.join('「%s→%s」%s（%.1f%%）' % (c['k1'], c['k2'], money_fn(c['a']), c['pct']) for c in top3)
+            L.append('**交叉结构**：主力组合集中于 %s，反映核心客群与主打产品的高度绑定。' % items)
             L.append('')
         if _dp.get('drivers'):
-            L.append('**环比驱动分解（%s → %s）**：' % (_dp['drivers'][0]['pair'][0], _dp['drivers'][0]['pair'][1]))
-            for dr in _dp['drivers']:
-                items = '、'.join('「%s」%s' % (k, ('+%s' % money_fn(v)) if v >= 0 else ('-%s' % money_fn(-v)))
-                                  for k, v in dr['top'])
-                L.append('- %s：%s' % (dr['key'], items))
+            d0 = _dp['drivers'][0]
+            pos = [('「%s」%s' % (k, ('+%s' % money_fn(v)) if v >= 0 else ('-%s' % money_fn(-v)))) for k, v in d0['top'][:2]]
+            L.append('**增长/下滑驱动**：环比变动主要由 %s 贡献；分维度看，%s。' % (
+                '、'.join(pos),
+                '；'.join('%s 维度：%s' % (dr['key'],
+                          '、'.join('「%s」%s' % (k, ('+%s' % money_fn(v)) if v >= 0 else ('-%s' % money_fn(-v)))
+                                    for k, v in dr['top'][:2])) for dr in _dp['drivers'][1:])))
             L.append('')
         if _dp.get('signer_matrix'):
-            L.append('**签单人月度贡献（含个人状态）**：')
-            L.append('| 签单人 | %s | 状态 |' % ' | '.join(r.get('months', [])))
-            L.append('|---|%s|---|' % '---|' * len(r.get('months', [])))
-            for s in _dp['signer_matrix']:
-                L.append('| %s | %s | %s |' % (
-                    s['s'], ' | '.join(money_fn(s['by_month'].get(m, 0)) for m in r.get('months', [])),
-                    s.get('status', '')))
+            st_txt = '；'.join('「%s」%s' % (s['s'], s.get('status', '')) for s in _dp['signer_matrix'])
+            dep_txt = ''
+            if sum(_dp['signer_matrix'][0]['by_month'].values()) / max(r.get('total', 1), 1) > 0.4:
+                dep_txt = '；Top1「%s」累计贡献 %.0f%%，存在单点依赖风险' % (
+                    _dp['signer_matrix'][0]['s'],
+                    sum(_dp['signer_matrix'][0]['by_month'].values()) / max(r.get('total', 1), 1) * 100)
+            L.append('**签单人表现**：%s%s。' % (st_txt, dep_txt))
             L.append('')
         if _dp.get('price_bands'):
-            L.append('**客单结构**：')
-            for k, v in _dp['price_bands'].items():
-                L.append('- %s：%d 笔' % (k, v))
             pj = _dp.get('price_segments') or {}
+            seg_txt = '、'.join('「%s」%d 笔' % (k, v) for k, v in _dp['price_bands'].items())
+            pj_txt = ''
             if pj:
-                L.append('- 客单中位 %s / P75 %s / 均值 %s；高客单段（>P75）占 %.0f%%'
-                         % (money_fn(pj.get('p50', 0)), money_fn(pj.get('p75', 0)),
-                            money_fn(pj.get('mean', 0)), pj.get('high_ratio', 0)))
+                pj_txt = '客单中位 %s、P75 %s、均值 %s，高客单段（>P75）占 %.0f%%%s。' % (
+                    money_fn(pj.get('p50', 0)), money_fn(pj.get('p75', 0)), money_fn(pj.get('mean', 0)),
+                    pj.get('high_ratio', 0),
+                    '，客单结构整体偏高' if pj.get('high_ratio', 0) >= 40 else ('，客单中位低于均值，存在右偏' if pj.get('mean', 0) > pj.get('p50', 0) else ''))
+            L.append('**客单结构**：%s %s' % (seg_txt, pj_txt))
             L.append('')
         if _dp.get('teacher'):
-            L.append('**服务人员结构**：')
-            for t in _dp['teacher']:
-                fb = '（兜底标签）' if t['name'] in (_dp.get('teacher_fallback') or []) else ''
-                L.append('- %s%s：%s（%.0f%%）' % (t['name'], fb, money_fn(t['a']), t['pct']))
+            fb = _dp.get('teacher_fallback') or []
+            t_txt = '、'.join('「%s」%s（%.0f%%）' % (t['name'], money_fn(t['a']), t['pct']) for t in _dp['teacher'][:3])
+            dep = _dp.get('teacher_dep', 0)
+            L.append('**服务人员结构**：头部服务人员：%s%s%s。' % (
+                t_txt,
+                ('；Top1 依赖度 %.0f%%，存在单点依赖' % dep) if dep >= 30 else '',
+                ('；「%s」为兜底标签，建议拆分口径' % fb[0]) if fb else ''))
             L.append('')
         if _dp.get('campus'):
-            L.append('**场所/门店结构**：')
-            for c in _dp['campus']:
-                L.append('- %s：%s（%.0f%%）' % (c['name'], money_fn(c['a']), c['pct']))
-            if _dp.get('campus_new'):
-                L.append('- 新增：%s' % '、'.join(_dp['campus_new']))
+            c_txt = '、'.join('「%s」%s（%.0f%%）' % (c['name'], money_fn(c['a']), c['pct']) for c in _dp['campus'][:3])
+            new_txt = ('；新增场所：%s' % '、'.join(_dp['campus_new'])) if _dp.get('campus_new') else ''
+            L.append('**场所/门店结构**：头部场所：%s。%s。' % (c_txt, new_txt))
             L.append('')
         if _dp.get('expansion'):
             ex = _dp['expansion']
             prev_txt = ''
             if ex.get('prev_a'):
-                prev_txt = '（上月 %d 笔 %s，单数增长 %.0f 倍）' % (
+                prev_txt = '；环比上月 %d 笔 %s，单数增长 %.0f 倍' % (
                     ex['prev_n'], money_fn(ex['prev_a']),
                     ex['n'] / ex['prev_n'] if ex.get('prev_n') else 0)
             topc = '、'.join('「%s」%s' % (n, money_short(v)) for n, v in ex.get('top_c', []))
-            L.append('**「%s」专项**：本月 %d 笔 %s，占 %.1f%%%s；科目：%s。' % (
+            L.append('**「%s」专项**：本月 %d 笔 %s，占 %.1f%%%s，集中于 %s——属于高价值增量，建议持续加码。' % (
                 ex['kw'], ex['n'], money_fn(ex['a']), ex['pct'], prev_txt, topc))
             L.append('')
         if _dp.get('insights'):
