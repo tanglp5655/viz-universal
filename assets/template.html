@@ -1374,9 +1374,9 @@ function renderGeo(key, node, crumbs){
     tooltip:{trigger:'item', confine:true,
       formatter:function(p){ var d=p.data; var f=(d&&d.properties)||{}; var full=f._fullName&&f._fullName!==p.name?"（"+f._fullName+"）":""; if(!d||d.value==null) return p.name+full+"<br>无数据"; return p.name+full+"<br>金额 "+money(d.value)+"（"+shortMoney(d.value)+"）<br>笔数 "+(d.cnt||0); }},
     visualMap:{ min:0, max:max, left:14, bottom:18, itemHeight:100, text:['高','低'], textStyle:{color:'#8899b0',fontSize:10},
-      inRange:{color:['#0e2a3a','#1d5b7a','#2a9db5','#4fd0c0','#9be7a0','#f2d65c','#e8767a']}, calculable:true },
+      inRange:{color:['#1f3f56','#1d5b7a','#2a9db5','#4fd0c0','#9be7a0','#f2d65c','#e8767a']}, calculable:true },
     series:[{ type:'map', map:'GEO', roam:true, zoom:1.15,
-      itemStyle:{borderColor:'rgba(255,255,255,.25)', borderWidth:.6, areaColor:'#0e1a26'},
+      itemStyle:{borderColor:'rgba(91,127,255,.55)', borderWidth:.8, areaColor:'#16263a'},
       emphasis:{label:{show:true,color:'#fff'}, itemStyle:{areaColor:'#3a63d8'}},
       label:{show:false},
       data:data }]
