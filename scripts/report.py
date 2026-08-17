@@ -43,7 +43,38 @@ def analyze(data):
     r['month_amt'] = month_amt
     r['month_cnt'] = OrderedDict((m, sum(1 for x in rows if x['d'][:7] == m)) for m in months)
 
-    # 环比
+    # ---- 数据完整性预检（对齐 DA"数据真实性判断"高地）----
+    # 月度覆盖天数：统计每月数据覆盖到几号
+    month_maxday = OrderedDict()
+    for m in months:
+        ds = [x['d'][8:10] for x in rows if x['d'][:7] == m and len(x['d']) >= 10]
+        month_maxday[m] = max(int(d) for d in ds) if ds else 0
+    # 最新月不完整判定：覆盖天数 < 15 或 笔数 < 前一月 30%
+    integrity = {'incomplete_month': None, 'days_covered': 0, 'warnings': [],
+                 'last_full_mom': None, 'last_full_pair': None}
+    if len(months) >= 2:
+        lm = months[-1]
+        ldc = month_maxday.get(lm, 0)
+        lcnt = r['month_cnt'].get(lm, 0)
+        prev_cnt = r['month_cnt'].get(months[-2], 1)
+        if ldc < 15 or lcnt < prev_cnt * 0.3:
+            integrity['incomplete_month'] = lm
+            integrity['days_covered'] = ldc
+            integrity['warnings'].append(
+                '最新月份 %s 数据仅覆盖至 %02d 日（%d 笔，上月 %d 笔）——该月不完整，环比以完整月为准'
+                % (lm, ldc, lcnt, prev_cnt))
+            # 用倒数第 2/3 完整月重算环比
+            if len(months) >= 3:
+                _p2, _p1 = month_amt[months[-3]], month_amt[months[-2]]
+                integrity['last_full_mom'] = _pct(_p1, _p2)
+                integrity['last_full_pair'] = (months[-3], months[-2])
+        # 时间窗检查
+        all_ds = sorted(x['d'] for x in rows if x.get('d'))
+        if all_ds:
+            integrity['window'] = (all_ds[0], all_ds[-1])
+    r['integrity'] = integrity
+
+    # 环比（若有完整性警告，mom 保留原始值，决策层用修正值）
     prev, cur = None, None
     if len(months) >= 2:
         prev, cur = month_amt[months[-2]], month_amt[months[-1]]
@@ -140,24 +171,41 @@ def build_decisions(r):
 
     # 决策 1：趋势可持续性
     if n_months >= 2:
-        if len(seq) >= 3 and seq[-1] > seq[-2] > seq[-3]:
+        inc = r.get('integrity') or {}
+        # 数据完整性预检：最新月不完整 → 环比以完整月为准（对齐 DA"数据窗口假象"判断）
+        fake_warning = None
+        eff_mom = mom
+        if inc.get('incomplete_month') and inc.get('last_full_mom') is not None:
+            eff_mom = inc['last_full_mom']
+            fake_warning = '⚠ 最新月份 %s 数据仅覆盖至 %02d 日（不完整月），原始环比 %+.1f%% 为数据窗口假象；' \
+                           '剔除后最近完整月环比（%s→%s）为 %+.1f%%。' % (
+                inc['incomplete_month'], inc.get('days_covered', 0), mom or 0,
+                inc['last_full_pair'][0], inc['last_full_pair'][1], eff_mom)
+        if len(seq) >= 3 and (eff_mom is None or eff_mom > 0) and seq[-1] > seq[-2] > seq[-3]:
             trend = '连续增长'
-        elif len(seq) >= 3 and seq[-1] < seq[-2] < seq[-3]:
+        elif len(seq) >= 3 and (eff_mom is None or eff_mom < 0) and seq[-1] < seq[-2] < seq[-3]:
             trend = '连续下滑'
-        elif mom is not None and abs(mom) >= 10:
-            trend = '环比' + ('增长' if mom > 0 else '下滑') + ' %.1f%%' % abs(mom)
+        elif eff_mom is not None and abs(eff_mom) >= 10:
+            trend = '环比' + ('增长' if eff_mom > 0 else '下滑') + ' %.1f%%' % abs(eff_mom)
         else:
             trend = '整体平稳'
         conf = _conf('高' if n_months >= 6 else ('中' if n_months >= 3 else '低'))
         ans = '样本期 %d 个月（%s），最近趋势：%s。月均金额 %s。' % (
             n_months, ' / '.join(months), trend, money_fn(r.get('total', 0) / max(n_months, 1)))
+        if fake_warning:
+            ans = fake_warning + ' ' + ans
         if r.get('region_top'):
             ans += ' 区域集中度 CR1=%.0f%%（%s）。' % (r['region_top'][0][2], r['region_top'][0][0])
         notes = ['样本期覆盖 %d 个月，若存在未纳入的大额/补录数据结论会被推翻' % n_months,
                  '高峰/低谷月若由活动或渠道投放驱动，趋势判断需结合外部信息',
                  '脱敏数据不含业务背景，置信度为统计层面']
+        if fake_warning:
+            notes.insert(0, '数据完整性预检已触发：%s 不完整，请拉取全月数据后重算趋势' % inc['incomplete_month'])
         actions = [
-            {'action': '补齐完整月份/年度数据，重建连续月度曲线', 'owner': '数据负责人', 'due': '1 周内'},
+            {'action': '拉取 %s 全月数据，重建连续月度曲线（当前仅覆盖至 %02d 日）'
+                       % (inc['incomplete_month'], inc.get('days_covered', 0)) if fake_warning
+                       else '补齐完整月份/年度数据，重建连续月度曲线',
+             'owner': '数据负责人', 'due': '1 周内'},
             {'action': '定位峰值月的驱动因素（活动/渠道/大单）', 'owner': '运营负责人', 'due': '2 周内'},
         ]
         decs.append({
@@ -235,6 +283,13 @@ def render_html(r, title='经营分析报告', theme='apple-glass'):
     if r.get('mom') is not None:
         up = r['mom'] >= 0
         mom_txt = '<span style="color:%s">环比 %+.1f%%</span>' % ('#4fd0c0' if up else '#e8767a', r['mom'])
+    # 数据完整性预检警告（对齐 DA"数据窗口假象"判断）
+    _inc = r.get('integrity') or {}
+    if _inc.get('incomplete_month'):
+        sec.insert(0, '<div class="warn">⚠️ <b>数据完整性预检</b>：最新月份 %s 数据仅覆盖至 %02d 日（不完整月），'
+                      '原始环比 %+.1f%% 可能为数据窗口假象——结论请以完整月为准（最近完整月环比 %+.1f%%）。</div>'
+                      % (_inc['incomplete_month'], _inc.get('days_covered', 0), r.get('mom') or 0,
+                         _inc.get('last_full_mom') or 0))
     sec.append('<div class="kpis">'
                '<div class="kpi"><div class="v">%s</div><div class="l">总金额</div></div>'
                '<div class="kpi"><div class="v">%s</div><div class="l">交易笔数</div></div>'
@@ -328,6 +383,7 @@ ul{{padding-left:18px;font-size:14px}} li{{margin:5px 0}}
 .note{{background:rgba(255,184,108,.06);border:1px solid rgba(255,184,108,.25);border-radius:12px;padding:14px 18px;margin-top:26px;font-size:13px}}
 .note sup{{color:#ffb86c}} .tag{{display:inline-block;font-size:11px;color:#ffb86c;border:1px solid rgba(255,184,108,.4);border-radius:20px;padding:2px 10px;margin-left:8px;vertical-align:middle}}
 .dc{{background:rgba(91,127,255,.05);border:1px solid rgba(91,127,255,.22);border-radius:12px;padding:14px 18px;margin:14px 0}} .dc p{{margin:6px 0}}
+.warn{{background:rgba(232,118,122,.08);border:1px solid rgba(232,118,122,.4);border-radius:12px;padding:12px 16px;margin:14px 0;font-size:13.5px;color:#e8b4b7}}
 .note2{{color:#7d93a8;font-size:12px}} .dc table{{font-size:12.5px}}
 @media print{{body{{background:#fff;color:#222}}.kpi{{background:#f3f6fa;border-color:#dfe6ee}}.kpi .v{{color:#111}}h1,h3{{color:#111}}th{{background:#f3f6fa;color:#445}}}}
 </style></head><body><div class="wrap">
@@ -432,6 +488,16 @@ def render_md(r, title='经营分析决策简报'):
     L.append('')
     L.append('> 生成日期：%s · 数据 %d 条 · 覆盖月份 %s · 已脱敏 %s' % (
         '2026-08-17', r.get('rows', 0), ' / '.join(r.get('months', [])), r.get('level', 'L0')))
+    # 数据完整性预检（对齐 DA"数据窗口假象"）
+    _inc = r.get('integrity') or {}
+    if _inc.get('incomplete_month'):
+        L.append('')
+        L.append('> ⚠️ **数据完整性预检**：最新月份 %s 数据仅覆盖至 %02d 日（%d 笔），该月不完整——'
+                 '原始环比 %+.1f%% 可能为**数据窗口假象**；最近完整月环比（%s→%s）为 %+.1f%%。'
+                 % (_inc['incomplete_month'], _inc.get('days_covered', 0),
+                    r['month_cnt'].get(_inc['incomplete_month'], 0), r.get('mom') or 0,
+                    _inc.get('last_full_pair', ('—', '—'))[0], _inc.get('last_full_pair', ('—', '—'))[1],
+                    _inc.get('last_full_mom') or 0))
     L.append('')
     if not r.get('decisions'):
         L.append('（数据量过小或无明显决策点，仅给出描述性概览）')
