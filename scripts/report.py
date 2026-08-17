@@ -275,6 +275,17 @@ def money_fn(v):
     return '¥{:,.0f}'.format(v or 0)
 
 
+def money_short(v):
+    if v is None:
+        return '0'
+    v = float(v)
+    if v >= 100000000:
+        return '%.1f亿' % (v / 100000000)
+    if v >= 10000:
+        return '%.1f万' % (v / 10000)
+    return '%.0f' % v
+
+
 def build_deep(rows, dims, months, r):
     """深度分析：交叉组合 / 环比驱动分解 / 签单人月度矩阵 / 结构洞察。
     目标：让报告从"泛泛而谈"升级为"有深度有广度"（交叉归因 + 驱动分解 + 业务结构）。"""
@@ -372,6 +383,127 @@ def build_deep(rows, dims, months, r):
         if se_sum:
             ins.append('平均课次单价 ¥%.0f/课次（累计课次 %d）' % (total / se_sum, se_sum))
     deep['insights'] = ins[:6]
+
+    # ---- v0.9.3 深度对等：客单分位 / 老师结构 / 校区维度 / 个人状态 / 扩科专项 / 一句话结论 ----
+    # 客单分位段
+    amounts = sorted(x.get('a', 0) for x in rows if x.get('a'))
+    if len(amounts) >= 4:
+        def _q(p):
+            i = int(len(amounts) * p)
+            return amounts[min(i, len(amounts) - 1)]
+        deep['price_segments'] = {
+            'p50': _q(0.5), 'p75': _q(0.75), 'mean': sum(amounts) / len(amounts),
+            'n': len(amounts),
+            'high_ratio': sum(1 for a in amounts if a >= _q(0.75)) / len(amounts) * 100,
+            'low_ratio': sum(1 for a in amounts if a <= _q(0.25)) / len(amounts) * 100,
+        }
+    # 客单分段（3 档：低/中/高，动态以 P50/P75 为界）
+    if amounts:
+        p50 = _q(0.5) if len(amounts) >= 4 else (amounts[len(amounts)//2] if amounts else 0)
+        p75 = _q(0.75) if len(amounts) >= 4 else p50
+        _k_low = '低（<%s）' % money_short(p50)
+        _k_mid = '中（%s~%s）' % (money_short(p50), money_short(p75))
+        _k_high = '高（>%s）' % money_short(p75)
+        seg = {_k_low: 0, _k_mid: 0, _k_high: 0}
+        for a in amounts:
+            if a <= p50:
+                key = _k_low
+            elif a <= p75:
+                key = _k_mid
+            else:
+                key = _k_high
+            seg[key] = seg.get(key, 0) + 1
+        deep['price_bands'] = {k: v for k, v in seg.items()}
+
+    # 老师结构（teacher 列）
+    if any('teacher' in x for x in rows):
+        tagg = {}
+        for x in rows:
+            tagg[x.get('teacher', '-')] = tagg.get(x.get('teacher', '-'), 0) + x.get('a', 0)
+        ts = sorted(tagg.items(), key=lambda kv: -kv[1])
+        deep['teacher'] = [{'name': n, 'a': v, 'pct': v / total * 100} for n, v in ts[:5]]
+        deep['teacher_dep'] = ts[0][1] / total * 100 if ts else 0
+        # 兜底标签检测（兼职/外包/其他）
+        deep['teacher_fallback'] = [n for n, _ in ts[:5] if any(w in n for w in ('兼职', '外包', '其他', '临时'))]
+
+    # 校区维度（campus 列）
+    if any('campus' in x for x in rows):
+        cagg = {}
+        for x in rows:
+            cagg[x.get('campus', '-')] = cagg.get(x.get('campus', '-'), 0) + x.get('a', 0)
+        cs = sorted(cagg.items(), key=lambda kv: -kv[1])
+        deep['campus'] = [{'name': n, 'a': v, 'pct': v / total * 100} for n, v in cs[:5]]
+        # 最新完整月新增校区检测
+        inc = r.get('integrity') or {}
+        pair = inc.get('last_full_pair') if inc.get('incomplete_month') else (months[-2], months[-1])
+        if len(pair) == 2 and len(months) >= 2:
+            old_c = {x.get('campus') for x in rows if x['d'][:7] == pair[0]}
+            new_c = {x.get('campus') for x in rows if x['d'][:7] == pair[1]}
+            deep['campus_new'] = sorted(new_c - old_c)[:3]
+
+    # 签单人个人状态（Top3 最新完整月趋势）
+    if deep.get('signer_matrix'):
+        inc = r.get('integrity') or {}
+        pair = inc.get('last_full_pair') if inc.get('incomplete_month') else (months[-2], months[-1])
+        if len(pair) == 2 and pair[0] in months and pair[1] in months:
+            for sm in deep['signer_matrix']:
+                a, b = sm['by_month'].get(pair[0], 0), sm['by_month'].get(pair[1], 0)
+                if a <= 0 and b <= 0:
+                    sm['status'] = '无产出'
+                elif a <= 0:
+                    sm['status'] = '爆发（新增 %s）' % money_short(b)
+                elif b >= a * 1.5:
+                    sm['status'] = '爆发（%s → %s，+%.0f%%）' % (money_short(a), money_short(b), (b - a) / a * 100)
+                elif b <= a * 0.5:
+                    sm['status'] = '下滑（%s → %s，-%.0f%%）' % (money_short(a), money_short(b), (a - b) / a * 100)
+                else:
+                    sm['status'] = '平稳'
+
+    # 扩科专项（src 含"扩科/加购/增购"）
+    for kw in ('扩科', '加购', '增购', '增项'):
+        if any(kw in str(x.get('src', '')) for x in rows):
+            exp = [x for x in rows if kw in str(x.get('src', ''))]
+            exp_total = sum(x.get('a', 0) for x in exp)
+            deep['expansion'] = {
+                'kw': kw, 'n': len(exp), 'a': exp_total,
+                'pct': exp_total / total * 100,
+                'top_c': sorted({(x.get('c', '-')): 0 for x in exp}.items())[:0] or None,
+            }
+            # 扩科科目 Top
+            cexp = {}
+            for x in exp:
+                cexp[x.get('c', '-')] = cexp.get(x.get('c', '-'), 0) + x.get('a', 0)
+            deep['expansion']['top_c'] = sorted(cexp.items(), key=lambda kv: -kv[1])[:3]
+            # 与上月对比
+            if len(months) >= 2:
+                pm = months[-2]
+                prev_exp = [x for x in rows if kw in str(x.get('src', '')) and x['d'][:7] == pm]
+                if prev_exp:
+                    deep['expansion']['prev_n'] = len(prev_exp)
+                    deep['expansion']['prev_a'] = sum(x.get('a', 0) for x in prev_exp)
+            break
+
+    # 一句话结论（全行业通用：营收 + 环比 + Top 驱动 + 亮点/风险）
+    inc = r.get('integrity') or {}
+    mom_used = inc.get('last_full_mom') if inc.get('incomplete_month') and inc.get('last_full_mom') is not None else r.get('mom')
+    parts = ['%s 营收 %s（%d 笔）' % (months[-1], money_fn(r.get('total', 0)), r.get('cnt', 0))]
+    if mom_used is not None:
+        parts.append('环比%s %.1f%%' % ('增长' if mom_used > 0 else '下滑', abs(mom_used)))
+    if deep.get('drivers') and deep['drivers'][0]['top']:
+        d0 = deep['drivers'][0]
+        pos = [k for k, v in d0['top'] if v > 0]
+        if pos:
+            parts.append('主要由「%s」驱动' % '、'.join(pos[:2]))
+    if deep.get('signer_matrix'):
+        s0 = deep['signer_matrix'][0]
+        parts.append('Top 签单人「%s」贡献 %.0f%%' % (s0['s'], sum(s0['by_month'].values()) / total * 100))
+    if deep.get('teacher_dep') and deep['teacher_dep'] >= 30:
+        parts.append('服务人员依赖度 %.0f%%' % deep['teacher_dep'])
+    if deep.get('expansion'):
+        parts.append('「%s」占比升至 %.1f%%' % (deep['expansion']['kw'], deep['expansion']['pct']))
+    if inc.get('incomplete_month'):
+        parts.append('⚠ %s 数据不完整（覆盖至 %02d 日）' % (inc['incomplete_month'], inc.get('days_covered', 0)))
+    deep['summary'] = '；'.join(parts) + '。'
     return deep
 
 
@@ -457,16 +589,55 @@ def render_html(r, title='经营分析报告', theme='apple-glass'):
                               for k, v in dr['top'])
             dsec.append('<p><b>%s</b>：%s</p>' % (dr['key'], items))
     if _dp.get('signer_matrix'):
-        rows_m = ''.join('<tr><td>%s</td>%s</tr>' % (
-            s['s'], ''.join('<td>%s</td>' % money_fn(s['by_month'].get(m, 0)) for m in r.get('months', [])))
+        rows_m = ''.join('<tr><td>%s</td>%s<td>%s</td></tr>' % (
+            s['s'], ''.join('<td>%s</td>' % money_fn(s['by_month'].get(m, 0)) for m in r.get('months', [])),
+            s.get('status', ''))
             for s in _dp['signer_matrix'])
-        dsec.append('<h3>八、签单人月度贡献</h3><table><tr><th>签单人</th>%s</tr>%s</table>'
+        dsec.append('<h3>八、签单人月度贡献（含个人状态）</h3><table><tr><th>签单人</th>%s<th>状态</th></tr>%s</table>'
                     % (''.join('<th>%s</th>' % m for m in r.get('months', [])), rows_m))
+    # 客单分位段
+    if _dp.get('price_bands'):
+        bands = ''.join('<tr><td>%s</td><td>%d 笔</td></tr>' % (k, v) for k, v in _dp['price_bands'].items())
+        pj = _dp.get('price_segments') or {}
+        pj_txt = ''
+        if pj:
+            pj_txt = '<p class="note2">客单中位 %s / P75 %s / 均值 %s；高客单段（>P75）占 %.0f%%</p>' % (
+                money_fn(pj.get('p50', 0)), money_fn(pj.get('p75', 0)), money_fn(pj.get('mean', 0)), pj.get('high_ratio', 0))
+        dsec.append('<h3>客单结构</h3><table><tr><th>客单段</th><th>笔数</th></tr>%s</table>%s' % (bands, pj_txt))
+    # 老师结构
+    if _dp.get('teacher'):
+        trows = ''.join('<tr><td>%s%s</td><td>%s</td><td>%.0f%%</td></tr>' % (
+            t['name'], '（兜底标签）' if t['name'] in (_dp.get('teacher_fallback') or []) else '',
+            money_fn(t['a']), t['pct']) for t in _dp['teacher'])
+        dsec.append('<h3>服务人员结构</h3><table><tr><th>人员</th><th>金额</th><th>占比</th></tr>%s</table>' % trows)
+    # 校区维度
+    if _dp.get('campus'):
+        crows = ''.join('<tr><td>%s</td><td>%s</td><td>%.0f%%</td></tr>' % (c['name'], money_fn(c['a']), c['pct'])
+                        for c in _dp['campus'])
+        new_txt = ''
+        if _dp.get('campus_new'):
+            new_txt = '<p class="note2">新增：%s</p>' % '、'.join(_dp['campus_new'])
+        dsec.append('<h3>场所/门店结构</h3><table><tr><th>场所</th><th>金额</th><th>占比</th></tr>%s</table>%s'
+                    % (crows, new_txt))
+    # 扩科专项
+    if _dp.get('expansion'):
+        ex = _dp['expansion']
+        prev_txt = ''
+        if ex.get('prev_a'):
+            prev_txt = '（上月 %d 笔 %s，单数增长 %.0f 倍）' % (
+                ex['prev_n'], money_fn(ex['prev_a']),
+                ex['n'] / ex['prev_n'] if ex.get('prev_n') else 0)
+        topc = '、'.join('「%s」%s' % (n, money_short(v)) for n, v in ex.get('top_c', []))
+        dsec.append('<h3>「%s」专项</h3><p>本月 %d 笔 %s，占 %.1f%%%s；科目：%s。</p>'
+                    % (ex['kw'], ex['n'], money_fn(ex['a']), ex['pct'], prev_txt, topc))
     if _dp.get('insights'):
         dsec.append('<h3>九、结构洞察</h3><ul>%s</ul>'
                     % ''.join('<li>%s</li>' % i for i in _dp['insights']))
     if dsec:
         sec.append('\n'.join(dsec))
+    # 一句话结论（放报告最前）
+    if _dp.get('summary'):
+        sec.insert(0, '<div class="sum">📌 <b>一句话结论</b>：%s</div>' % _dp['summary'])
 
     # 决策简报（决策问题→答案→置信度→注意事项→行动清单）
     if r.get('decisions'):
@@ -513,6 +684,7 @@ ul{{padding-left:18px;font-size:14px}} li{{margin:5px 0}}
 .note sup{{color:#ffb86c}} .tag{{display:inline-block;font-size:11px;color:#ffb86c;border:1px solid rgba(255,184,108,.4);border-radius:20px;padding:2px 10px;margin-left:8px;vertical-align:middle}}
 .dc{{background:rgba(91,127,255,.05);border:1px solid rgba(91,127,255,.22);border-radius:12px;padding:14px 18px;margin:14px 0}} .dc p{{margin:6px 0}}
 .warn{{background:rgba(232,118,122,.08);border:1px solid rgba(232,118,122,.4);border-radius:12px;padding:12px 16px;margin:14px 0;font-size:13.5px;color:#e8b4b7}}
+.sum{{background:rgba(79,208,192,.07);border:1px solid rgba(79,208,192,.35);border-radius:12px;padding:12px 16px;margin:14px 0;font-size:14px}}
 .note2{{color:#7d93a8;font-size:12px}} .dc table{{font-size:12.5px}}
 @media print{{body{{background:#fff;color:#222}}.kpi{{background:#f3f6fa;border-color:#dfe6ee}}.kpi .v{{color:#111}}h1,h3{{color:#111}}th{{background:#f3f6fa;color:#445}}}}
 </style></head><body><div class="wrap">
@@ -619,6 +791,11 @@ def render_md(r, title='经营分析决策简报'):
         '2026-08-17', r.get('rows', 0), ' / '.join(r.get('months', [])), r.get('level', 'L0')))
     # 数据完整性预检（对齐 DA"数据窗口假象"）
     _inc = r.get('integrity') or {}
+    # 一句话结论（放最前）
+    _dp = r.get('deep') or {}
+    if _dp.get('summary'):
+        L.append('')
+        L.append('> 📌 **一句话结论**：%s' % _dp['summary'])
     if _inc.get('incomplete_month'):
         L.append('')
         L.append('> ⚠️ **数据完整性预检**：最新月份 %s 数据仅覆盖至 %02d 日（%d 笔），该月不完整——'
@@ -667,11 +844,47 @@ def render_md(r, title='经营分析决策简报'):
                 L.append('- %s：%s' % (dr['key'], items))
             L.append('')
         if _dp.get('signer_matrix'):
-            L.append('**签单人月度贡献**：')
-            L.append('| 签单人 | %s |' % ' | '.join(r.get('months', [])))
-            L.append('|---|%s|' % '---|' * len(r.get('months', [])))
+            L.append('**签单人月度贡献（含个人状态）**：')
+            L.append('| 签单人 | %s | 状态 |' % ' | '.join(r.get('months', [])))
+            L.append('|---|%s|---|' % '---|' * len(r.get('months', [])))
             for s in _dp['signer_matrix']:
-                L.append('| %s | %s |' % (s['s'], ' | '.join(money_fn(s['by_month'].get(m, 0)) for m in r.get('months', []))))
+                L.append('| %s | %s | %s |' % (
+                    s['s'], ' | '.join(money_fn(s['by_month'].get(m, 0)) for m in r.get('months', [])),
+                    s.get('status', '')))
+            L.append('')
+        if _dp.get('price_bands'):
+            L.append('**客单结构**：')
+            for k, v in _dp['price_bands'].items():
+                L.append('- %s：%d 笔' % (k, v))
+            pj = _dp.get('price_segments') or {}
+            if pj:
+                L.append('- 客单中位 %s / P75 %s / 均值 %s；高客单段（>P75）占 %.0f%%'
+                         % (money_fn(pj.get('p50', 0)), money_fn(pj.get('p75', 0)),
+                            money_fn(pj.get('mean', 0)), pj.get('high_ratio', 0)))
+            L.append('')
+        if _dp.get('teacher'):
+            L.append('**服务人员结构**：')
+            for t in _dp['teacher']:
+                fb = '（兜底标签）' if t['name'] in (_dp.get('teacher_fallback') or []) else ''
+                L.append('- %s%s：%s（%.0f%%）' % (t['name'], fb, money_fn(t['a']), t['pct']))
+            L.append('')
+        if _dp.get('campus'):
+            L.append('**场所/门店结构**：')
+            for c in _dp['campus']:
+                L.append('- %s：%s（%.0f%%）' % (c['name'], money_fn(c['a']), c['pct']))
+            if _dp.get('campus_new'):
+                L.append('- 新增：%s' % '、'.join(_dp['campus_new']))
+            L.append('')
+        if _dp.get('expansion'):
+            ex = _dp['expansion']
+            prev_txt = ''
+            if ex.get('prev_a'):
+                prev_txt = '（上月 %d 笔 %s，单数增长 %.0f 倍）' % (
+                    ex['prev_n'], money_fn(ex['prev_a']),
+                    ex['n'] / ex['prev_n'] if ex.get('prev_n') else 0)
+            topc = '、'.join('「%s」%s' % (n, money_short(v)) for n, v in ex.get('top_c', []))
+            L.append('**「%s」专项**：本月 %d 笔 %s，占 %.1f%%%s；科目：%s。' % (
+                ex['kw'], ex['n'], money_fn(ex['a']), ex['pct'], prev_txt, topc))
             L.append('')
         if _dp.get('insights'):
             L.append('**结构洞察**：')
