@@ -130,6 +130,9 @@ def analyze(data):
             missing.append({'field': c, 'n': miss_n, 'pct': miss_n / len(rows) * 100})
     r['missing'] = missing
 
+    # 数据口径溯源（来源文件/数据库）
+    r['sources'] = (meta or {}).get('sources') or []
+
     # 建议（规则引擎）
     tips = []
     if r['mom'] is not None:
@@ -205,11 +208,12 @@ def build_decisions(r):
         if fake_warning:
             notes.insert(0, '数据完整性预检已触发：%s 不完整，请拉取全月数据后重算趋势' % inc['incomplete_month'])
         actions = [
-            {'action': '拉取 %s 全月数据，重建连续月度曲线（当前仅覆盖至 %02d 日）'
-                       % (inc['incomplete_month'], inc.get('days_covered', 0)) if fake_warning
-                       else '补齐完整月份/年度数据，重建连续月度曲线',
-             'owner': '数据负责人', 'due': '1 周内'},
-            {'action': '定位峰值月的驱动因素（活动/渠道/大单）', 'owner': '运营负责人', 'due': '2 周内'},
+            {'action': ('拉取 %s 全月数据，重建连续月度曲线（当前仅覆盖至 %02d 日）'
+                        % (inc['incomplete_month'], inc.get('days_covered', 0))) if fake_warning
+                        else '补齐完整月份/年度数据，重建连续月度曲线',
+             'owner': '数据负责人', 'due': '1 周内', 'benefit': '消除数据窗口假象，避免误判方向、错误投入'},
+            {'action': '定位峰值月的驱动因素（活动/渠道/大单）', 'owner': '运营负责人', 'due': '2 周内',
+             'benefit': '锁定增长/下滑主因，聚焦资源投放'},
         ]
         decs.append({
             'q': '近期营收%s是否可持续？' % ('增长' if '增长' in trend else ('下滑' if '下滑' in trend else '平稳')),
@@ -232,8 +236,10 @@ def build_decisions(r):
                 'notes': ['若该维度为自然业务重心（如核心产品），集中并非问题，需结合战略判断',
                           '可通过交叉维度（区域×产品、客户×产品）验证集中是否普遍'],
                 'actions': [
-                    {'action': '评估拓展次优维度（占比第 2/3 名）的投入', 'owner': '业务负责人', 'due': '2 周内'},
-                    {'action': '监控头部维度份额变化，设置集中度预警线', 'owner': '数据负责人', 'due': '1 个月内'},
+                    {'action': '评估拓展次优维度（占比第 2/3 名）的投入', 'owner': '业务负责人', 'due': '2 周内',
+                     'benefit': '降低单一依赖，打开第二增长线'},
+                    {'action': '监控头部维度份额变化，设置集中度预警线', 'owner': '数据负责人', 'due': '1 个月内',
+                     'benefit': '提前预警结构风险'},
                 ],
             })
 
@@ -249,8 +255,10 @@ def build_decisions(r):
             'notes': ['若为本地化业务（如地方教培），区域集中是常态而非风险',
                       '需对比次优区域的获客成本与客户价值再决策'],
             'actions': [
-                {'action': '评估次优区域的单客户价值 vs 主区域获客成本', 'owner': '增长负责人', 'due': '2 周内'},
-                {'action': '试点 1-2 个次优区域的投放验证', 'owner': '运营负责人', 'due': '1 个月内'},
+                {'action': '评估次优区域的单客户价值 vs 主区域获客成本', 'owner': '增长负责人', 'due': '2 周内',
+                 'benefit': '判断区域扩张 ROI，避免盲目投入'},
+                {'action': '试点 1-2 个次优区域的投放验证', 'owner': '运营负责人', 'due': '1 个月内',
+                 'benefit': '小成本验证新市场，可复制性强'},
             ],
         })
 
@@ -264,8 +272,10 @@ def build_decisions(r):
             'reason': '缺失率 %.1f%%（>0%% 触发）' % miss_rate,
             'notes': ['缺失字段详见文末 * 补充说明', '补充完整口径后相关结论应复核'],
             'actions': [
-                {'action': '在源头系统补充缺失字段的采集', 'owner': '数据负责人', 'due': '1 个月内'},
-                {'action': '对缺失率>20%% 的字段建立质量看板', 'owner': '数据负责人', 'due': '1 个月内'},
+                {'action': '在源头系统补充缺失字段的采集', 'owner': '数据负责人', 'due': '1 个月内',
+                 'benefit': '提升分析完整度，减少决策盲区'},
+                {'action': '对缺失率>20%% 的字段建立质量看板', 'owner': '数据负责人', 'due': '1 个月内',
+                 'benefit': '数据质量问题可视化，源头可控'},
             ],
         })
     return decs
@@ -657,9 +667,9 @@ def render_html(r, title='经营分析报告', theme='apple-glass'):
                         % (conf_badge.get(dc['conf'], dc['conf']), dc.get('reason', '')))
             dsec.append('<p><b>注意事项（什么会改变结论）</b>：</p><ul>%s</ul>'
                         % ''.join('<li>%s</li>' % n for n in dc.get('notes', [])))
-            dsec.append('<table><tr><th>下一步行动</th><th>负责人</th><th>期限</th></tr>%s</table>'
-                        % ''.join('<tr><td>%s</td><td>%s</td><td>%s</td></tr>'
-                                  % (a['action'], a['owner'], a['due']) for a in dc.get('actions', [])))
+            dsec.append('<table><tr><th>下一步行动</th><th>负责人</th><th>期限</th><th>预期收益</th></tr>%s</table>'
+                        % ''.join('<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>'
+                                  % (a['action'], a['owner'], a['due'], a.get('benefit', '')) for a in dc.get('actions', [])))
             dsec.append('</div>')
         sec.insert(0, '\n'.join(dsec))
 
@@ -794,6 +804,11 @@ def render_md(r, title='经营分析决策简报'):
     L.append('')
     L.append('> 生成日期：%s · 数据 %d 条 · 覆盖月份 %s · 已脱敏 %s' % (
         '2026-08-17', r.get('rows', 0), ' / '.join(r.get('months', [])), r.get('level', 'L0')))
+    # 数据口径溯源
+    if r.get('sources'):
+        L.append('')
+        L.append('> 📋 数据口径：合并 %d 份来源（%s）→ 去重后 %d 条明细。'
+                 % (len(r['sources']), '、'.join(r['sources']), r.get('rows', 0)))
     # 数据完整性预检（对齐 DA"数据窗口假象"）
     _inc = r.get('integrity') or {}
     # 一句话结论（放最前）
@@ -824,10 +839,10 @@ def render_md(r, title='经营分析决策简报'):
             L.append('- %s' % n)
         L.append('')
         L.append('**下一步行动**：')
-        L.append('| 行动 | 负责人 | 期限 |')
-        L.append('|---|---|---|')
+        L.append('| 行动 | 负责人 | 期限 | 预期收益 |')
+        L.append('|---|---|---|---|')
         for a in dc.get('actions', []):
-            L.append('| %s | %s | %s |' % (a['action'], a['owner'], a['due']))
+            L.append('| %s | %s | %s | %s |' % (a['action'], a['owner'], a['due'], a.get('benefit', '')))
         L.append('')
     # 深度分析（交叉/驱动/矩阵/洞察）
     _dp = r.get('deep') or {}

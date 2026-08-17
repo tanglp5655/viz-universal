@@ -717,6 +717,12 @@ def main():
         print(f'去重: {len(rows)} → {len(uniq)}')
         rows = uniq
 
+    # 数据口径溯源（报告展示"合并 N 份表 → X 条"）
+    if args.db:
+        meta['sources'] = ['数据库直连(%s)' % args.db.split('://')[0]]
+    elif args.input and args.input != ['-']:
+        meta['sources'] = [os.path.basename(p) for p in args.input]
+
     with open(args.output, 'w', encoding='utf-8') as fp:
         json.dump({'rows': rows, 'dims': dims, 'level': args.level, 'meta': meta}, fp, ensure_ascii=False, indent=1)
 
