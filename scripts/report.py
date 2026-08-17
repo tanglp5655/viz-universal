@@ -117,7 +117,111 @@ def analyze(data):
     if not tips:
         tips.append('数据整体健康，建议按月度持续跟踪头部维度变化')
     r['tips'] = tips
+    # ---- 决策简报（决策问题→答案→置信度→注意事项→行动清单）----
+    r['decisions'] = build_decisions(r)
     return r
+
+
+def build_decisions(r):
+    """把分析结果升级为"决策简报"：决策问题 → 简短答案 → 证据 → 置信度 → 注意事项 → 行动清单。
+    对齐竞品 Data Analysis 的决策简报模板（评测维度：分析严谨性 / 分析深度）。"""
+    months = r.get('months', [])
+    seq = list(r.get('month_amt', {}).values())
+    mom = r.get('mom')
+    n_months = len(months)
+    miss_rate = sum(m['n'] for m in r.get('missing', [])) / max(r.get('rows', 1), 1) * 100
+    # 置信度规则：样本期>=6 高；3-5 中；<3 低；缺失率>10% 降一档
+    def _conf(base):
+        if miss_rate > 10:
+            return {'高': '中', '中': '低', '低': '低'}[base]
+        return base
+
+    decs = []
+
+    # 决策 1：趋势可持续性
+    if n_months >= 2:
+        if len(seq) >= 3 and seq[-1] > seq[-2] > seq[-3]:
+            trend = '连续增长'
+        elif len(seq) >= 3 and seq[-1] < seq[-2] < seq[-3]:
+            trend = '连续下滑'
+        elif mom is not None and abs(mom) >= 10:
+            trend = '环比' + ('增长' if mom > 0 else '下滑') + ' %.1f%%' % abs(mom)
+        else:
+            trend = '整体平稳'
+        conf = _conf('高' if n_months >= 6 else ('中' if n_months >= 3 else '低'))
+        ans = '样本期 %d 个月（%s），最近趋势：%s。月均金额 %s。' % (
+            n_months, ' / '.join(months), trend, money_fn(r.get('total', 0) / max(n_months, 1)))
+        if r.get('region_top'):
+            ans += ' 区域集中度 CR1=%.0f%%（%s）。' % (r['region_top'][0][2], r['region_top'][0][0])
+        notes = ['样本期覆盖 %d 个月，若存在未纳入的大额/补录数据结论会被推翻' % n_months,
+                 '高峰/低谷月若由活动或渠道投放驱动，趋势判断需结合外部信息',
+                 '脱敏数据不含业务背景，置信度为统计层面']
+        actions = [
+            {'action': '补齐完整月份/年度数据，重建连续月度曲线', 'owner': '数据负责人', 'due': '1 周内'},
+            {'action': '定位峰值月的驱动因素（活动/渠道/大单）', 'owner': '运营负责人', 'due': '2 周内'},
+        ]
+        decs.append({
+            'q': '近期营收%s是否可持续？' % ('增长' if '增长' in trend else ('下滑' if '下滑' in trend else '平稳')),
+            'ans': ans,
+            'conf': conf,
+            'reason': '样本期 %d 个月' % n_months + ('；存在 %d 个字段缺失' % len(r.get('missing', [])) if r.get('missing') else ''),
+            'notes': notes,
+            'actions': actions,
+        })
+
+    # 决策 2：结构依赖风险（头部维度集中）
+    for dt in r.get('dims_top', [])[:1]:
+        t = dt['top'][0] if dt['top'] else None
+        if t and t[2] >= 40:
+            decs.append({
+                'q': '是否应降低对「%s」的单一依赖？' % t[0],
+                'ans': '「%s」占 %s 的 %.0f%%，集中度偏高，单一维度波动会主导整体表现。' % (t[0], dt['label'], t[2]),
+                'conf': _conf('高' if t[2] >= 60 else '中'),
+                'reason': 'CR1=%.0f%%（>40%% 触发提示）' % t[2],
+                'notes': ['若该维度为自然业务重心（如核心产品），集中并非问题，需结合战略判断',
+                          '可通过交叉维度（区域×产品、客户×产品）验证集中是否普遍'],
+                'actions': [
+                    {'action': '评估拓展次优维度（占比第 2/3 名）的投入', 'owner': '业务负责人', 'due': '2 周内'},
+                    {'action': '监控头部维度份额变化，设置集中度预警线', 'owner': '数据负责人', 'due': '1 个月内'},
+                ],
+            })
+
+    # 决策 3：区域集中风险
+    if r.get('region_top') and r['region_top'][0][2] >= 50:
+        reg = r['region_top'][0]
+        decs.append({
+            'q': '是否应推进区域多元化？',
+            'ans': '%s「%s」占比 %.0f%%，区域集中明显，单一市场波动将直接主导整体走势。' % (
+                r.get('region_label', '区域'), reg[0], reg[2]),
+            'conf': _conf('高' if reg[2] >= 65 else '中'),
+            'reason': '区域 CR1=%.0f%%（>=50%% 触发）' % reg[2],
+            'notes': ['若为本地化业务（如地方教培），区域集中是常态而非风险',
+                      '需对比次优区域的获客成本与客户价值再决策'],
+            'actions': [
+                {'action': '评估次优区域的单客户价值 vs 主区域获客成本', 'owner': '增长负责人', 'due': '2 周内'},
+                {'action': '试点 1-2 个次优区域的投放验证', 'owner': '运营负责人', 'due': '1 个月内'},
+            ],
+        })
+
+    # 决策 4：数据质量/缺失
+    if r.get('missing'):
+        decs.append({
+            'q': '是否需要完善数据采集口径？',
+            'ans': '存在 %d 个字段 %d 条缺失（%.1f%%），影响对应维度分析的完整度。' % (
+                len(r['missing']), sum(m['n'] for m in r['missing']), miss_rate),
+            'conf': '中',
+            'reason': '缺失率 %.1f%%（>0%% 触发）' % miss_rate,
+            'notes': ['缺失字段详见文末 * 补充说明', '补充完整口径后相关结论应复核'],
+            'actions': [
+                {'action': '在源头系统补充缺失字段的采集', 'owner': '数据负责人', 'due': '1 个月内'},
+                {'action': '对缺失率>20%% 的字段建立质量看板', 'owner': '数据负责人', 'due': '1 个月内'},
+            ],
+        })
+    return decs
+
+
+def money_fn(v):
+    return '¥{:,.0f}'.format(v or 0)
 
 
 def render_html(r, title='经营分析报告', theme='apple-glass'):
@@ -180,6 +284,25 @@ def render_html(r, title='经营分析报告', theme='apple-glass'):
     sec.append('<h3>五、行动建议</h3><ul>%s</ul>'
                % ''.join('<li>%s</li>' % t for t in r.get('tips', [])))
 
+    # 决策简报（决策问题→答案→置信度→注意事项→行动清单）
+    if r.get('decisions'):
+        conf_badge = {'高': '<span style="color:#4fd0c0">🟢 高</span>',
+                      '中': '<span style="color:#ffb86c">🟡 中</span>',
+                      '低': '<span style="color:#e8767a">🔴 低</span>'}
+        dsec = ['<h3>📌 决策简报</h3>']
+        for i, dc in enumerate(r['decisions'], 1):
+            dsec.append('<div class="dc"><p><b>【决策 %d】%s</b></p>' % (i, dc['q']))
+            dsec.append('<p><b>简短答案</b>：%s</p>' % dc['ans'])
+            dsec.append('<p><b>置信度</b>：%s <span class="note2">%s</span></p>'
+                        % (conf_badge.get(dc['conf'], dc['conf']), dc.get('reason', '')))
+            dsec.append('<p><b>注意事项（什么会改变结论）</b>：</p><ul>%s</ul>'
+                        % ''.join('<li>%s</li>' % n for n in dc.get('notes', [])))
+            dsec.append('<table><tr><th>下一步行动</th><th>负责人</th><th>期限</th></tr>%s</table>'
+                        % ''.join('<tr><td>%s</td><td>%s</td><td>%s</td></tr>'
+                                  % (a['action'], a['owner'], a['due']) for a in dc.get('actions', [])))
+            dsec.append('</div>')
+        sec.insert(0, '\n'.join(dsec))
+
     # 文末缺失补充说明（输出规范条款）
     foot = ''
     if r.get('missing'):
@@ -204,6 +327,8 @@ th{{background:#13202e;color:#9fb4c9;text-align:left;padding:8px 10px}} td{{padd
 ul{{padding-left:18px;font-size:14px}} li{{margin:5px 0}}
 .note{{background:rgba(255,184,108,.06);border:1px solid rgba(255,184,108,.25);border-radius:12px;padding:14px 18px;margin-top:26px;font-size:13px}}
 .note sup{{color:#ffb86c}} .tag{{display:inline-block;font-size:11px;color:#ffb86c;border:1px solid rgba(255,184,108,.4);border-radius:20px;padding:2px 10px;margin-left:8px;vertical-align:middle}}
+.dc{{background:rgba(91,127,255,.05);border:1px solid rgba(91,127,255,.22);border-radius:12px;padding:14px 18px;margin:14px 0}} .dc p{{margin:6px 0}}
+.note2{{color:#7d93a8;font-size:12px}} .dc table{{font-size:12.5px}}
 @media print{{body{{background:#fff;color:#222}}.kpi{{background:#f3f6fa;border-color:#dfe6ee}}.kpi .v{{color:#111}}h1,h3{{color:#111}}th{{background:#f3f6fa;color:#445}}}}
 </style></head><body><div class="wrap">
 <h1>{title}<span class="tag">已脱敏 {level}</span></h1>
@@ -298,6 +423,55 @@ def render_pdf(r, title='经营分析报告', out_path=None):
                                    % (m['field'], m['n'], m['pct']), st['BodyText']))
     SimpleDocTemplate(out_path, pagesize=A4, topMargin=36, bottomMargin=36).build(story)
     return out_path
+
+
+def render_md(r, title='经营分析决策简报'):
+    """渲染为 Markdown 决策简报（对齐 Data Analysis 的决策简报模板：决策问题→答案→证据→置信度→注意事项→行动清单）。"""
+    L = []
+    L.append('# %s' % title)
+    L.append('')
+    L.append('> 生成日期：%s · 数据 %d 条 · 覆盖月份 %s · 已脱敏 %s' % (
+        '2026-08-17', r.get('rows', 0), ' / '.join(r.get('months', [])), r.get('level', 'L0')))
+    L.append('')
+    if not r.get('decisions'):
+        L.append('（数据量过小或无明显决策点，仅给出描述性概览）')
+    for i, dc in enumerate(r['decisions'], 1):
+        L.append('## 决策 %d：%s' % (i, dc['q']))
+        L.append('')
+        L.append('**简短答案**：%s' % dc['ans'])
+        L.append('')
+        L.append('**置信度**：%s（%s）' % (dc['conf'], dc.get('reason', '')))
+        L.append('')
+        L.append('**注意事项（什么会改变结论）**：')
+        for n in dc.get('notes', []):
+            L.append('- %s' % n)
+        L.append('')
+        L.append('**下一步行动**：')
+        L.append('| 行动 | 负责人 | 期限 |')
+        L.append('|---|---|---|')
+        for a in dc.get('actions', []):
+            L.append('| %s | %s | %s |' % (a['action'], a['owner'], a['due']))
+        L.append('')
+    # 关键指标附录
+    L.append('## 附：关键指标')
+    L.append('| 指标 | 数值 |')
+    L.append('|---|---|')
+    L.append('| 总金额 | %s |' % money_fn(r.get('total', 0)))
+    L.append('| 交易笔数 | %s |' % r.get('cnt', 0))
+    L.append('| 客单价 | %s |' % money_fn(r.get('total', 0) / max(r.get('cnt', 1), 1)))
+    if r.get('mom') is not None:
+        L.append('| 最近环比 | %+.1f%% |' % r['mom'])
+    for dt in r.get('dims_top', [])[:1]:
+        if dt['top']:
+            L.append('| %s 头部集中 CR1 | 「%s」%.0f%% |' % (dt['label'], dt['top'][0][0], dt['top'][0][2]))
+    if r.get('region_top'):
+        L.append('| %s 集中 CR1 | 「%s」%.0f%% |' % (r.get('region_label', '区域'), r['region_top'][0][0], r['region_top'][0][2]))
+    if r.get('missing'):
+        L.append('| 数据缺失 | %d 个字段（详见 * 说明） |' % len(r['missing']))
+    L.append('')
+    L.append('---')
+    L.append('*本简报由 viz-universal 规则引擎生成；置信度为统计层面判断，业务决策请结合外部信息。*')
+    return '\n'.join(L)
 
 
 def main():
