@@ -80,6 +80,9 @@ def analyze(data):
         prev, cur = month_amt[months[-2]], month_amt[months[-1]]
     r['mom'] = _pct(cur, prev) if cur is not None else None
 
+    # ---- 深度分析（交叉/驱动分解/签单人矩阵/结构洞察）----
+    r['deep'] = build_deep(rows, dims, months, r)
+
     # 维度构成（dims 排行前 3 + 占比）
     dims_top = []
     for d in dims:
@@ -272,6 +275,106 @@ def money_fn(v):
     return '¥{:,.0f}'.format(v or 0)
 
 
+def build_deep(rows, dims, months, r):
+    """深度分析：交叉组合 / 环比驱动分解 / 签单人月度矩阵 / 结构洞察。
+    目标：让报告从"泛泛而谈"升级为"有深度有广度"（交叉归因 + 驱动分解 + 业务结构）。"""
+    total = r.get('total', 0) or 1
+    deep = {'cross': [], 'drivers': [], 'signer_matrix': [], 'insights': []}
+    if not rows:
+        return deep
+
+    def _dims(keys):
+        return [d.get('key') for d in dims if d.get('key') in keys]
+
+    # 1) 交叉组合：前两个可聚合维度（默认 src×c）Top6
+    k1 = 'src' if any('src' in r for r in rows) else (_dims(['c', 'signer']) or ['c'])[0]
+    k2 = 'c' if 'c' in rows[0] else (_dims(['signer', 'campus', 'teacher']) or [None])[0]
+    if k1 and k2 and k1 != k2:
+        agg = {}
+        for x in rows:
+            v1, v2 = x.get(k1, '-'), x.get(k2, '-')
+            agg[(v1, v2)] = agg.get((v1, v2), 0) + x.get('a', 0)
+        top = sorted(agg.items(), key=lambda kv: -kv[1])[:6]
+        deep['cross'] = [{'k1': v1, 'k2': v2, 'a': a, 'pct': a / total * 100} for (v1, v2), a in top]
+
+    # 2) 环比驱动分解：最近完整月 Δ 中 Top 贡献维度（按 src 与 c）
+    if len(months) >= 2:
+        lm, pm = months[-1], months[-2]
+        # 完整性预检修正：最新月不完整时用倒数完整月对（pair = (旧月, 新月)）
+        inc = r.get('integrity') or {}
+        if inc.get('incomplete_month') and inc.get('last_full_pair'):
+            lm, pm = inc['last_full_pair'][1], inc['last_full_pair'][0]
+        for k in ('src', 'c', 'signer'):
+            if not any(k in x for x in rows):
+                continue
+            cur_m, prev_m = {}, {}
+            for x in rows:
+                if x['d'][:7] == lm:
+                    cur_m[x.get(k, '-')] = cur_m.get(x.get(k, '-'), 0) + x.get('a', 0)
+                elif x['d'][:7] == pm:
+                    prev_m[x.get(k, '-')] = prev_m.get(x.get(k, '-'), 0) + x.get('a', 0)
+            if not cur_m or not prev_m:
+                continue
+            deltas = {kk: cur_m.get(kk, 0) - prev_m.get(kk, 0) for kk in set(cur_m) | set(prev_m)}
+            top_d = sorted(deltas.items(), key=lambda kv: -kv[1])[:3]
+            deep['drivers'].append({'key': k, 'pair': (pm, lm), 'top': top_d})
+
+    # 3) 签单人月度矩阵（Top3 签单人 × 月份）
+    if any('signer' in x for x in rows):
+        sg = {}
+        for x in rows:
+            s = x.get('signer', '-')
+            sg.setdefault(s, {})[x['d'][:7]] = sg.get(s, {}).get(x['d'][:7], 0) + x.get('a', 0)
+        top_sg = sorted(sg.items(), key=lambda kv: -sum(kv[1].values()))[:3]
+        deep['signer_matrix'] = [{'s': s, 'by_month': {m: msum.get(m, 0) for m in months}} for s, msum in top_sg]
+
+    # 4) 结构洞察
+    ins = []
+    # 课程集中（教培语境）
+    if any('c' in x for x in rows):
+        cagg = {}
+        for x in rows:
+            cagg[x.get('c', '-')] = cagg.get(x.get('c', '-'), 0) + x.get('a', 0)
+        cs = sorted(cagg.items(), key=lambda kv: -kv[1])
+        if cs:
+            ins.append('课程结构：Top1「%s」占 %.0f%%，Top3 合计 %.0f%%（%s）'
+                       % (cs[0][0], cs[0][1] / total * 100,
+                          sum(v for _, v in cs[:3]) / total * 100,
+                          ' / '.join(n for n, _ in cs[:3])))
+    # 来源结构（新生/老生）
+    if any('src' in x for x in rows):
+        sagg = {}
+        for x in rows:
+            sagg[x.get('src', '-')] = sagg.get(x.get('src', '-'), 0) + x.get('a', 0)
+        ss = sorted(sagg.items(), key=lambda kv: -kv[1])
+        if len(ss) >= 2:
+            top_src, second_src = ss[0], ss[1]
+            ins.append('来源结构：「%s」占 %.0f%%、「%s」占 %.0f%%——%s'
+                       % (top_src[0], top_src[1] / total * 100, second_src[0], second_src[1] / total * 100,
+                          '呈复购/续费驱动' if top_src[0] in ('老生', '老学员', '老客') else '获客与复购并重'))
+    # 客单价对比（新生 vs 整体）
+    if any('src' in x for x in rows) and any('n' in x for x in rows):
+        new_src = [x for x in rows if x.get('src') in ('新生', '新客户', '新客')]
+        if new_src and len(new_src) < len(rows):
+            na = sum(x.get('a', 0) for x in new_src) / len(new_src)
+            ins.append('新生客单价 ¥%.0f vs 整体 ¥%.0f（%s）'
+                       % (na, r.get('total', 0) / max(r.get('cnt', 1), 1),
+                          '新生获客单价偏低，需看续课验证' if na < r.get('total', 0) / max(r.get('cnt', 1), 1) else '新生结构健康'))
+    # 签单人集中
+    if deep['signer_matrix']:
+        s0 = deep['signer_matrix'][0]
+        ins.append('签单集中：Top1「%s」贡献 %.0f%%（%s 至 %s 累计）——%s'
+                   % (s0['s'], sum(s0['by_month'].values()) / total * 100, months[0], months[-1],
+                      '存在单点依赖风险' if sum(s0['by_month'].values()) / total > 0.4 else '结构分散，依赖可控'))
+    # 课次/单价（教培）
+    if any('se' in x for x in rows):
+        se_sum = sum(x.get('se', 0) for x in rows)
+        if se_sum:
+            ins.append('平均课次单价 ¥%.0f/课次（累计课次 %d）' % (total / se_sum, se_sum))
+    deep['insights'] = ins[:6]
+    return deep
+
+
 def render_html(r, title='经营分析报告', theme='apple-glass'):
     """渲染为 HTML 报告页（暗色，无外部依赖）。"""
     def money(v):
@@ -338,6 +441,32 @@ def render_html(r, title='经营分析报告', theme='apple-glass'):
     # 建议
     sec.append('<h3>五、行动建议</h3><ul>%s</ul>'
                % ''.join('<li>%s</li>' % t for t in r.get('tips', [])))
+
+    # 深度分析（交叉 / 驱动分解 / 签单人矩阵 / 结构洞察）
+    _dp = r.get('deep') or {}
+    dsec = []
+    if _dp.get('cross'):
+        dsec.append('<h3>六、交叉分析（来源 × 项目 Top 组合）</h3><table><tr><th>组合</th><th>金额</th><th>占比</th></tr>%s</table>'
+                    % ''.join('<tr><td>%s → %s</td><td>%s</td><td>%.1f%%</td></tr>'
+                              % (c['k1'], c['k2'], money_fn(c['a']), c['pct']) for c in _dp['cross']))
+    if _dp.get('drivers'):
+        dsec.append('<h3>七、环比驱动分解（%s → %s）</h3>'
+                    % (_dp['drivers'][0]['pair'][0], _dp['drivers'][0]['pair'][1]))
+        for dr in _dp['drivers']:
+            items = '、'.join('「%s」%s' % (k, ('+%s' % money_fn(v)) if v >= 0 else ('-%s' % money_fn(-v)))
+                              for k, v in dr['top'])
+            dsec.append('<p><b>%s</b>：%s</p>' % (dr['key'], items))
+    if _dp.get('signer_matrix'):
+        rows_m = ''.join('<tr><td>%s</td>%s</tr>' % (
+            s['s'], ''.join('<td>%s</td>' % money_fn(s['by_month'].get(m, 0)) for m in r.get('months', [])))
+            for s in _dp['signer_matrix'])
+        dsec.append('<h3>八、签单人月度贡献</h3><table><tr><th>签单人</th>%s</tr>%s</table>'
+                    % (''.join('<th>%s</th>' % m for m in r.get('months', [])), rows_m))
+    if _dp.get('insights'):
+        dsec.append('<h3>九、结构洞察</h3><ul>%s</ul>'
+                    % ''.join('<li>%s</li>' % i for i in _dp['insights']))
+    if dsec:
+        sec.append('\n'.join(dsec))
 
     # 决策简报（决策问题→答案→置信度→注意事项→行动清单）
     if r.get('decisions'):
@@ -518,6 +647,37 @@ def render_md(r, title='经营分析决策简报'):
         for a in dc.get('actions', []):
             L.append('| %s | %s | %s |' % (a['action'], a['owner'], a['due']))
         L.append('')
+    # 深度分析（交叉/驱动/矩阵/洞察）
+    _dp = r.get('deep') or {}
+    if _dp.get('cross') or _dp.get('drivers') or _dp.get('insights'):
+        L.append('## 深度分析')
+        L.append('')
+        if _dp.get('cross'):
+            L.append('**交叉组合（来源 × 项目 Top6）**：')
+            L.append('| 组合 | 金额 | 占比 |')
+            L.append('|---|---|---|')
+            for c in _dp['cross']:
+                L.append('| %s → %s | %s | %.1f%% |' % (c['k1'], c['k2'], money_fn(c['a']), c['pct']))
+            L.append('')
+        if _dp.get('drivers'):
+            L.append('**环比驱动分解（%s → %s）**：' % (_dp['drivers'][0]['pair'][0], _dp['drivers'][0]['pair'][1]))
+            for dr in _dp['drivers']:
+                items = '、'.join('「%s」%s' % (k, ('+%s' % money_fn(v)) if v >= 0 else ('-%s' % money_fn(-v)))
+                                  for k, v in dr['top'])
+                L.append('- %s：%s' % (dr['key'], items))
+            L.append('')
+        if _dp.get('signer_matrix'):
+            L.append('**签单人月度贡献**：')
+            L.append('| 签单人 | %s |' % ' | '.join(r.get('months', [])))
+            L.append('|---|%s|' % '---|' * len(r.get('months', [])))
+            for s in _dp['signer_matrix']:
+                L.append('| %s | %s |' % (s['s'], ' | '.join(money_fn(s['by_month'].get(m, 0)) for m in r.get('months', []))))
+            L.append('')
+        if _dp.get('insights'):
+            L.append('**结构洞察**：')
+            for i in _dp['insights']:
+                L.append('- %s' % i)
+            L.append('')
     # 关键指标附录
     L.append('## 附：关键指标')
     L.append('| 指标 | 数值 |')
