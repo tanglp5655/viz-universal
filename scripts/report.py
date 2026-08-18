@@ -296,6 +296,102 @@ def money_short(v):
     return '%.0f' % v
 
 
+# ---------------- 报告 SVG 图表（离线、无外部库）----------------
+_SVG_C = ['#5b7fff', '#40bfb0', '#d4a84b', '#e8767a', '#8a7cc0', '#5aa88a', '#3f8b9e']
+
+
+def svg_bar(labels, values, h=170, fmt=None, maxw=400):
+    """横向条形图（适合排行：科目/签单人/来源）"""
+    n = len(labels)
+    row = max(16, int((h - 20) / n))
+    ph = n * row + 20
+    maxv = max(values) or 1
+    pad_l = 64
+    bw_max = maxw - pad_l - 48
+    out = ['<svg viewBox="0 0 %d %d" width="100%%" style="max-width:%dpx;display:block">' % (maxw, ph, maxw)]
+    for i, (lb, v) in enumerate(zip(labels, values)):
+        y = 10 + i * row
+        bw = bw_max * v / maxv
+        out.append('<text x="%d" y="%d" font-size="9" fill="#5c6b85">%s</text>' % (0, y + 10, lb[:12]))
+        out.append('<rect x="%d" y="%d" width="%.1f" height="%d" rx="3" fill="%s"/>' % (
+            pad_l, y, max(bw, 2), row - 8, _SVG_C[i % len(_SVG_C)]))
+        out.append('<text x="%d" y="%d" font-size="9" fill="#33415c">%s</text>' % (
+            pad_l + bw + 5, y + 10, (fmt(v) if fmt else money_short(v))))
+    out.append('</svg>')
+    return ''.join(out)
+
+
+def svg_trend(labels, amounts, cnts, h=180, maxw=400):
+    """组合图：柱=金额（左轴）+ 折线=笔数（右轴）"""
+    pad_l, pad_b, pad_t = 30, 20, 16
+    plot_w = maxw - pad_l - 6
+    plot_h = h - pad_t - pad_b
+    maxa = max(amounts) or 1
+    maxc = max(cnts) or 1
+    n = len(labels)
+    iw = plot_w / n
+    out = ['<svg viewBox="0 0 %d %d" width="100%%" style="max-width:%dpx;display:block">' % (maxw, h, maxw)]
+    # 网格
+    for gi in range(4):
+        gy = pad_t + plot_h * gi / 3
+        out.append('<line x1="%d" y1="%.1f" x2="%d" y2="%.1f" stroke="#eef1f8" stroke-width="1"/>' % (pad_l, gy, maxw - 4, gy))
+    # 柱
+    for i, (lb, a) in enumerate(zip(labels, amounts)):
+        x = pad_l + i * iw + iw * 0.18
+        bw = iw * 0.56
+        bh = plot_h * a / maxa
+        y = h - pad_b - bh
+        out.append('<rect x="%.1f" y="%.1f" width="%.1f" height="%.1f" rx="3" fill="%s"/>' % (x, y, bw, max(bh, 1), _SVG_C[i % len(_SVG_C)]))
+        out.append('<text x="%.1f" y="%.1f" text-anchor="middle" font-size="8" fill="#7c8aa5">%s</text>' % (x + bw / 2, h - 6, lb))
+    # 折线（笔数，右轴）
+    pts = []
+    for i, c in enumerate(cnts):
+        x = pad_l + i * iw + iw * 0.46
+        y = h - pad_b - plot_h * c / maxc
+        pts.append('%.1f,%.1f' % (x, y))
+    out.append('<polyline points="%s" fill="none" stroke="#e8767a" stroke-width="2"/>' % ' '.join(pts))
+    for i, c in enumerate(cnts):
+        x = pad_l + i * iw + iw * 0.46
+        y = h - pad_b - plot_h * c / maxc
+        out.append('<circle cx="%.1f" cy="%.1f" r="3" fill="#e8767a"/>' % (x, y))
+        out.append('<text x="%.1f" y="%.1f" text-anchor="middle" font-size="8" fill="#e8767a">%d</text>' % (x, y - 6, c))
+    out.append('</svg>')
+    return ''.join(out)
+
+
+def svg_donut(labels, values, h=150, maxw=150):
+    """环形图（适合构成：来源/客单段）"""
+    total = sum(values) or 1
+    cx = cy = h / 2
+    r_out, r_in = h / 2 - 6, h / 2 - 22
+    ang = -90.0
+    out = ['<svg viewBox="0 0 %d %d" width="%d" style="max-width:%dpx;display:block">' % (h, h, h, h)]
+    for i, (lb, v) in enumerate(zip(labels, values)):
+        a2 = ang + 360 * v / total
+        a1r, a2r = ang * 3.14159 / 180, a2 * 3.14159 / 180
+        x1, y1 = cx + r_out * _cos(a1r), cy + r_out * _sin(a1r)
+        x2, y2 = cx + r_out * _cos(a2r), cy + r_out * _sin(a2r)
+        x3, y3 = cx + r_in * _cos(a2r), cy + r_in * _sin(a2r)
+        x4, y4 = cx + r_in * _cos(a1r), cy + r_in * _sin(a1r)
+        large = 1 if (a2 - ang) > 180 else 0
+        out.append('<path d="M%.1f %.1f A%.1f %.1f 0 %d 1 %.1f %.1f L%.1f %.1f A%.1f %.1f 0 %d 0 %.1f %.1f Z" fill="%s"/>' % (
+            x1, y1, r_out, r_out, large, x2, y2, x3, y3, r_in, r_in, large, x4, y4, _SVG_C[i % len(_SVG_C)]))
+        ang = a2
+    out.append('<text x="%.1f" y="%.1f" text-anchor="middle" font-size="12" font-weight="700" fill="#1f2d4d">%s</text>' % (cx, cy, money_short(total)))
+    out.append('</svg>')
+    return ''.join(out)
+
+
+def _cos(a):
+    import math
+    return math.cos(a)
+
+
+def _sin(a):
+    import math
+    return math.sin(a)
+
+
 def build_deep(rows, dims, months, r):
     """深度分析：交叉组合 / 环比驱动分解 / 签单人月度矩阵 / 结构洞察。
     目标：让报告从"泛泛而谈"升级为"有深度有广度"（交叉归因 + 驱动分解 + 业务结构）。"""
@@ -663,7 +759,11 @@ def render_html(r, title='经营分析报告', theme='apple-glass'):
         rows_m = ''.join(
             '<tr><td>%s</td><td>%s</td><td>%d 笔</td></tr>' % (m, money(v), r['month_cnt'].get(m, 0))
             for m, v in r['month_amt'].items())
-        sec.append('<h3>一、月度走势</h3><table><tr><th>月份</th><th>金额</th><th>笔数</th></tr>%s</table>' % rows_m)
+        _trd = svg_trend([m[2:] + '月' for m in r['month_amt'].keys()],
+                         list(r['month_amt'].values()),
+                         [r['month_cnt'].get(m, 0) for m in r['month_amt'].keys()])
+        sec.append('<h3>一、月度走势</h3>%s<table><tr><th>月份</th><th>金额</th><th>笔数</th></tr>%s</table>'
+                   % (_trd, rows_m))
         seq = list(r['month_amt'].values())
         if len(seq) >= 3 and seq[-1] > seq[-2] > seq[-3]:
             sec.append('<p>近三个月连续增长，趋势向好。</p>')
@@ -700,12 +800,20 @@ def render_html(r, title='经营分析报告', theme='apple-glass'):
     # 深度分析（文字叙述为主、表格为辅——对齐专业经营报告风格）
     _dp = r.get('deep') or {}
     dsec = []
-    # 交叉组合（叙述）
+    # 交叉组合（叙述 + 科目条形图）
     if _dp.get('cross'):
         top3 = _dp['cross'][:3]
         items = '、'.join('「%s→%s」%s（%.1f%%）' % (c['k1'], c['k2'], money_fn(c['a']), c['pct']) for c in top3)
         dsec.append('<h3>交叉结构</h3><p>主力组合集中于 %s，反映核心客群与主打产品的高度绑定。%s</p>'
                     % (items, ('其余组合占比分散' if len(_dp['cross']) > 3 else '')))
+        # 科目金额条形图（按 k2 聚合 Top5）
+        k2agg = {}
+        for c in _dp['cross']:
+            k2agg[c['k2']] = k2agg.get(c['k2'], 0) + c['a']
+        if k2agg:
+            labs = [k for k, _ in sorted(k2agg.items(), key=lambda kv: -kv[1])[:5]]
+            vals = [k2agg[k] for k in labs]
+            dsec.append(svg_bar(labs, vals))
     # 驱动分解（叙述）
     if _dp.get('drivers'):
         d0 = _dp['drivers'][0]
@@ -715,7 +823,7 @@ def render_html(r, title='经营分析报告', theme='apple-glass'):
                        '；'.join('%s 维度：%s' % (dr['key'],
                                  '、'.join('「%s」%s' % (k, ('+%s' % money_fn(v)) if v >= 0 else ('-%s' % money_fn(-v)))
                                            for k, v in dr['top'][:2])) for dr in _dp['drivers'][1:])))
-    # 签单人（叙述 + 辅助矩阵）
+    # 签单人（叙述 + 条形图）
     if _dp.get('signer_matrix'):
         st_txt = '；'.join('「%s」%s' % (s['s'], s.get('status', '')) for s in _dp['signer_matrix'])
         dsec.append('<h3>签单人表现</h3><p>头部签单人：%s。%s</p>'
@@ -724,6 +832,9 @@ def render_html(r, title='经营分析报告', theme='apple-glass'):
                         % (_dp['signer_matrix'][0]['s'],
                            sum(_dp['signer_matrix'][0]['by_month'].values()) / max(r.get('total', 1), 1) * 100)
                         if sum(_dp['signer_matrix'][0]['by_month'].values()) / max(r.get('total', 1), 1) > 0.4 else '')))
+        _sg_labs = [s['s'] for s in _dp['signer_matrix']]
+        _sg_vals = [sum(s['by_month'].values()) for s in _dp['signer_matrix']]
+        dsec.append(svg_bar(_sg_labs, _sg_vals))
     # 客单结构（叙述）
     if _dp.get('price_bands'):
         pj = _dp.get('price_segments') or {}
@@ -735,7 +846,11 @@ def render_html(r, title='经营分析报告', theme='apple-glass'):
                 pj.get('high_ratio', 0),
                 '，客单结构整体偏高' if pj.get('high_ratio', 0) >= 40 else ('，客单中位低于均值，存在右偏' if pj.get('mean', 0) > pj.get('p50', 0) else ''))
         dsec.append('<h3>客单结构</h3><p>%s %s</p>' % (seg_txt, pj_txt))
-    # 老师结构（叙述）
+        # 客单段环形图
+        _pb_labs = list(_dp['price_bands'].keys())
+        _pb_vals = list(_dp['price_bands'].values())
+        dsec.append(svg_donut(_pb_labs, _pb_vals))
+    # 老师结构（叙述 + 条形图）
     if _dp.get('teacher'):
         fb = _dp.get('teacher_fallback') or []
         t_txt = '、'.join('「%s」%s（%.0f%%）' % (t['name'], money_fn(t['a']), t['pct']) for t in _dp['teacher'][:3])
@@ -744,6 +859,9 @@ def render_html(r, title='经营分析报告', theme='apple-glass'):
                     % (t_txt,
                        ('；Top1 依赖度 %.0f%%，存在单点依赖' % dep) if dep >= 30 else '',
                        ('；「%s」为兜底标签，建议拆分口径' % fb[0]) if fb else ''))
+        _t_labs = [t['name'] for t in _dp['teacher'][:5]]
+        _t_vals = [t['a'] for t in _dp['teacher'][:5]]
+        dsec.append(svg_bar(_t_labs, _t_vals))
     # 校区维度（叙述）
     if _dp.get('campus'):
         c_txt = '、'.join('「%s」%s（%.0f%%）' % (c['name'], money_fn(c['a']), c['pct']) for c in _dp['campus'][:3])
