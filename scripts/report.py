@@ -519,6 +519,114 @@ def build_deep(rows, dims, months, r):
     if inc.get('incomplete_month'):
         parts.append('⚠ %s 数据不完整（覆盖至 %02d 日）' % (inc['incomplete_month'], inc.get('days_covered', 0)))
     deep['summary'] = '；'.join(parts) + '。'
+
+    # ---- v0.9.7 故事化：本月亮点 / 风险注意点 / 科目排名变化 / 最新月开局 ----
+    hl, cn = [], []
+    # 亮点 1：双签单引擎（Top2 合计占比 >=60%）
+    if deep.get('signer_matrix') and len(deep['signer_matrix']) >= 2:
+        sm = deep['signer_matrix']
+        s0, s1 = sum(sm[0]['by_month'].values()), sum(sm[1]['by_month'].values())
+        if (s0 + s1) / total >= 0.6:
+            hl.append('双引擎驱动：「%s」%s + 「%s」%s 合计贡献 %.0f%%' % (
+                sm[0]['s'], money_short(s0), sm[1]['s'], money_short(s1), (s0 + s1) / total * 100))
+    # 亮点 2：扩科放量
+    if deep.get('expansion') and deep['expansion']['pct'] >= 5:
+        ex = deep['expansion']
+        g = '，环比单数增长 %.0f 倍' % (ex['n'] / ex['prev_n']) if ex.get('prev_n') else ''
+        hl.append('「%s」放量：%d 笔 %s（占 %.1f%%%s）' % (ex['kw'], ex['n'], money_short(ex['a']), ex['pct'], g))
+    # 亮点 3：高客单结构
+    if deep.get('price_segments') and deep['price_segments'].get('high_ratio', 0) >= 30:
+        hl.append('高客单结构：>P75 客单段占 %.0f%%，中高客单主导' % deep['price_segments']['high_ratio'])
+    # 亮点 4：营收高增
+    mom_used = (inc.get('last_full_mom') if inc.get('incomplete_month') and inc.get('last_full_mom') is not None
+                else r.get('mom'))
+    if mom_used is not None and mom_used >= 30:
+        hl.append('营收高增：完整月环比 %+.1f%%' % mom_used)
+    # 亮点 5：新生结构（src 有"新生"类）
+    if any('src' in x for x in rows):
+        sagg = {}
+        for x in rows:
+            sagg[x.get('src', '-')] = sagg.get(x.get('src', '-'), 0) + x.get('a', 0)
+        new_v = sum(v for k, v in sagg.items() if any(w in k for w in ('新生', '新客', '新客户')))
+        if new_v and new_v / total >= 0.2:
+            hl.append('新增量：新客来源贡献 %s（%.0f%%）' % (money_short(new_v), new_v / total * 100))
+    # 注意点 1：科目"量大价低"
+    if any('c' in x for x in rows):
+        cagg_n, cagg_a = {}, {}
+        for x in rows:
+            cagg_a[x.get('c', '-')] = cagg_a.get(x.get('c', '-'), 0) + x.get('a', 0)
+            cagg_n[x.get('c', '-')] = cagg_n.get(x.get('c', '-'), 0) + 1
+        avg = total / max(r.get('cnt', 1), 1)
+        for k in sorted(cagg_a, key=lambda k: -cagg_n.get(k, 0))[:3]:
+            if cagg_n.get(k, 0) >= 3 and cagg_a.get(k, 0) / cagg_n[k] < avg * 0.6:
+                cn.append('「%s」量大价低：%d 单 %s（客单 %s < 平均 %s 的 60%%）——低价/引流课占比高'
+                          % (k, cagg_n[k], money_short(cagg_a[k]), money_short(cagg_a[k] / cagg_n[k]),
+                             money_short(avg)))
+                break
+    # 注意点 2：服务人员依赖
+    if deep.get('teacher_dep') and deep['teacher_dep'] >= 30:
+        cn.append('服务人员依赖：Top1「%s」占 %.0f%%%s'
+                  % (deep['teacher'][0]['name'], deep['teacher_dep'],
+                     ('；「%s」为兜底标签' % deep['teacher_fallback'][0]) if deep.get('teacher_fallback') else ''))
+    # 注意点 3：签单集中 + 个人下滑
+    if deep.get('signer_matrix'):
+        s0r = sum(deep['signer_matrix'][0]['by_month'].values()) / total
+        if s0r > 0.4:
+            cn.append('签单集中：Top1「%s」累计占比 %.0f%%，单点依赖风险'
+                      % (deep['signer_matrix'][0]['s'], s0r * 100))
+        for s in deep['signer_matrix']:
+            if '下滑' in s.get('status', ''):
+                cn.append('签单人下滑：「%s」%s' % (s['s'], s['status']))
+    # 注意点 4：数据不完整
+    if inc.get('incomplete_month'):
+        cn.append('数据窗口：%s 仅覆盖至 %02d 日（不完整月），环比以完整月为准'
+                  % (inc['incomplete_month'], inc.get('days_covered', 0)))
+    deep['highlights'] = hl[:3]
+    deep['concerns'] = cn[:4]
+
+    # 科目排名变化（完整月对 Top3 环比 + 排名跃升）
+    pair = (inc.get('last_full_pair') if inc.get('incomplete_month') and inc.get('last_full_pair')
+            else ((months[-2], months[-1]) if len(months) >= 2 else None))
+    if pair and any('c' in x for x in rows):
+        cm = [{}, {}]
+        for x in rows:
+            if x['d'][:7] == pair[0]:
+                cm[0][x.get('c', '-')] = cm[0].get(x.get('c', '-'), 0) + x.get('a', 0)
+            elif x['d'][:7] == pair[1]:
+                cm[1][x.get('c', '-')] = cm[1].get(x.get('c', '-'), 0) + x.get('a', 0)
+        rk = [{k: i for i, (k, _) in enumerate(sorted(d.items(), key=lambda kv: -kv[1]))} for d in cm]
+        chg = []
+        for k in sorted(cm[1], key=lambda k: -cm[1][k])[:3]:
+            prev_v = cm[0].get(k, 0)
+            move = rk[0].get(k, 99) - rk[1].get(k, 99)
+            chg.append({'name': k, 'cur': cm[1][k], 'prev': prev_v,
+                        'move': ('上升%d位' % move) if move > 0 else ('下降%d位' % -move) if move < 0 else '持平',
+                        'is_new': k not in cm[0]})
+        deep['cat_change'] = {'pair': pair, 'top': chg}
+
+    # 最新月开局解读（最新月份 笔数/金额 + 前 3 构成）
+    lm = months[-1] if months else None
+    if lm:
+        lr = [x for x in rows if x['d'][:7] == lm]
+        if lr:
+            l_total = sum(x.get('a', 0) for x in lr)
+            l_c = {}
+            for x in lr:
+                l_c[x.get('c', '-')] = l_c.get(x.get('c', '-'), 0) + x.get('a', 0)
+            top_c = '、'.join('「%s」%s' % (k, money_short(v)) for k, v in sorted(l_c.items(), key=lambda kv: -kv[1])[:3])
+            l_src = {}
+            for x in lr:
+                l_src[x.get('src', '-')] = l_src.get(x.get('src', '-'), 0) + 1
+            top_src = '、'.join('「%s」%d单' % (k, v) for k, v in sorted(l_src.items(), key=lambda kv: -kv[1])[:2])
+            pace = ''
+            if inc.get('incomplete_month') == lm and inc.get('days_covered'):
+                days = inc['days_covered']
+                if days > 0 and l_total / days * 30 > r.get('total', 0) / max(len(months), 1) * 0.9:
+                    pace = '按当前节奏推算，全月有望接近此前月均水平'
+                else:
+                    pace = '按当前节奏推算，全月或低于此前月均'
+            deep['opening'] = {'month': lm, 'n': len(lr), 'a': l_total,
+                               'top_c': top_c, 'top_src': top_src, 'pace': pace}
     return deep
 
 
@@ -652,6 +760,28 @@ def render_html(r, title='经营分析报告', theme='apple-glass'):
         topc = '、'.join('「%s」%s' % (n, money_short(v)) for n, v in ex.get('top_c', []))
         dsec.append('<h3>「%s」专项</h3><p>本月 %d 笔 %s，占 %.1f%%%s，集中于 %s——属于高价值增量，建议持续加码。</p>'
                     % (ex['kw'], ex['n'], money_fn(ex['a']), ex['pct'], prev_txt, topc))
+    # 本月亮点（故事化）
+    if _dp.get('highlights'):
+        dsec.append('<h3>本月亮点</h3><ul>%s</ul>'
+                    % ''.join('<li>✅ %s</li>' % i for i in _dp['highlights']))
+    # 风险注意点（故事化）
+    if _dp.get('concerns'):
+        dsec.append('<h3>风险注意点</h3><ul>%s</ul>'
+                    % ''.join('<li>⚠️ %s</li>' % i for i in _dp['concerns']))
+    # 科目排名变化
+    if _dp.get('cat_change'):
+        cc = _dp['cat_change']
+        items = '、'.join('「%s」%s（上月 %s，%s%s）' % (
+            t['name'], money_fn(t['cur']), money_fn(t['prev']),
+            '新上榜' if t['is_new'] else t['move'], '' if t['is_new'] else '') for t in cc['top'])
+        dsec.append('<h3>主营结构变化（%s → %s）</h3><p>%s。</p>' % (cc['pair'][0], cc['pair'][1], items))
+    # 最新月开局解读
+    if _dp.get('opening'):
+        op = _dp['opening']
+        pace_txt = ('；%s' % op['pace']) if op.get('pace') else ''
+        dsec.append('<h3>%s开局解读</h3><p>截至当前 %s 已有 %d 笔 %s，构成：%s；来源：%s。%s</p>'
+                    % (op['month'][:7], op['month'], op['n'], money_fn(op['a']),
+                       op['top_c'], op['top_src'], pace_txt.strip('；')))
     if _dp.get('insights'):
         dsec.append('<h3>结构洞察</h3><ul>%s</ul>'
                     % ''.join('<li>%s</li>' % i for i in _dp['insights']))
@@ -916,6 +1046,33 @@ def render_md(r, title='经营分析决策简报'):
             topc = '、'.join('「%s」%s' % (n, money_short(v)) for n, v in ex.get('top_c', []))
             L.append('**「%s」专项**：本月 %d 笔 %s，占 %.1f%%%s，集中于 %s——属于高价值增量，建议持续加码。' % (
                 ex['kw'], ex['n'], money_fn(ex['a']), ex['pct'], prev_txt, topc))
+            L.append('')
+        # 本月亮点
+        if _dp.get('highlights'):
+            L.append('**本月亮点**：')
+            for i in _dp['highlights']:
+                L.append('- ✅ %s' % i)
+            L.append('')
+        # 风险注意点
+        if _dp.get('concerns'):
+            L.append('**风险注意点**：')
+            for i in _dp['concerns']:
+                L.append('- ⚠️ %s' % i)
+            L.append('')
+        # 主营结构变化
+        if _dp.get('cat_change'):
+            cc = _dp['cat_change']
+            items = '、'.join('「%s」%s（上月 %s，%s）' % (
+                t['name'], money_fn(t['cur']), money_fn(t['prev']),
+                '新上榜' if t['is_new'] else t['move']) for t in cc['top'])
+            L.append('**主营结构变化（%s → %s）**：%s。' % (cc['pair'][0], cc['pair'][1], items))
+            L.append('')
+        # 最新月开局解读
+        if _dp.get('opening'):
+            op = _dp['opening']
+            pace_txt = ('；%s' % op['pace']) if op.get('pace') else ''
+            L.append('**%s开局解读**：截至当前已有 %d 笔 %s，构成：%s；来源：%s。%s' % (
+                op['month'][:7], op['n'], money_fn(op['a']), op['top_c'], op['top_src'], pace_txt.strip('；')))
             L.append('')
         if _dp.get('insights'):
             L.append('**结构洞察**：')
