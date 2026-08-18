@@ -154,14 +154,15 @@ def analyze(data):
     if not tips:
         tips.append('数据整体健康，建议按月度持续跟踪头部维度变化')
     r['tips'] = tips
-    # ---- 决策简报（决策问题→答案→置信度→注意事项→行动清单）----
-    r['decisions'] = build_decisions(r)
+    # ---- 决策简报（决策问题→答案→置信度→注意事项→行动清单，含数据驱动建议）----
+    r['decisions'] = build_decisions(r, r.get('deep'))
     return r
 
 
-def build_decisions(r):
-    """把分析结果升级为"决策简报"：决策问题 → 简短答案 → 证据 → 置信度 → 注意事项 → 行动清单。
+def build_decisions(r, _dp=None):
+    """把分析结果升级为"决策简报"：决策问题 → 简短答案 → 证据 → 置信度 → 注意事项 → 行动清单（业务定制+数据驱动）。
     对齐竞品 Data Analysis 的决策简报模板（评测维度：分析严谨性 / 分析深度）。"""
+    _dp = _dp or {}
     months = r.get('months', [])
     seq = list(r.get('month_amt', {}).values())
     mom = r.get('mom')
@@ -207,14 +208,65 @@ def build_decisions(r):
                  '脱敏数据不含业务背景，置信度为统计层面']
         if fake_warning:
             notes.insert(0, '数据完整性预检已触发：%s 不完整，请拉取全月数据后重算趋势' % inc['incomplete_month'])
+        # v0.9.9 行动建议：业务定制+数据驱动（基于 deep 数据）
         actions = [
-            {'action': ('拉取 %s 全月数据，重建连续月度曲线（当前仅覆盖至 %02d 日）'
+            {'title': '拉取全月数据 + 重建月度曲线',
+             'action': ('拉取 %s 全月数据（当前覆盖至 %02d 日），重建连续月度曲线'
                         % (inc['incomplete_month'], inc.get('days_covered', 0))) if fake_warning
                         else '补齐完整月份/年度数据，重建连续月度曲线',
-             'owner': '数据负责人', 'due': '1 周内', 'benefit': '消除数据窗口假象，避免误判方向、错误投入'},
-            {'action': '定位峰值月的驱动因素（活动/渠道/大单）', 'owner': '运营负责人', 'due': '2 周内',
-             'benefit': '锁定增长/下滑主因，聚焦资源投放'},
+             'owner': '数据负责人', 'due': '1 周内',
+             'benefit': '消除数据窗口假象，避免误判方向、错误投入'},
         ]
+        # 业务定制 1：激活下滑签单人
+        for sm in (_dp.get('signer_matrix') or []):
+            if '下滑' in sm.get('status', '') and sm.get('by_month'):
+                pair = (inc.get('last_full_pair') if inc.get('incomplete_month') else (months[-2] if len(months) >= 2 else None))
+                if not pair:
+                    continue
+                a, b = sm['by_month'].get(pair[0], 0), sm['by_month'].get(pair[1], 0)
+                target = max(max(sm['by_month'].values()), 10000)
+                actions.append({
+                    'title': '激活下滑签单人',
+                    'action': '「%s」%s→%s（-%.0f%%），重点排查掉单原因，目标回到 %s/月'
+                              % (sm['s'], money_short(a), money_short(b),
+                                 (a - b) / a * 100 if a else 0, money_short(target)),
+                    'owner': '教务负责人', 'due': '1 个月内',
+                    'benefit': '预期回到月均水平，按当前客单基线估算可贡献 ¥%s' % money_short(target),
+                })
+                break
+        # 业务定制 2：扩科放量加码
+        ex = _dp.get('expansion')
+        if ex and ex['pct'] >= 5:
+            prev_n = ex.get('prev_n', 0)
+            grow = '，环比单数增长 %.0f 倍' % (ex['n'] / prev_n) if prev_n else ''
+            top_c = '、'.join('「%s」' % n for n, _ in ex.get('top_c', [])[:3]) or '高产值科目'
+            actions.append({
+                'title': '扩科策略继续加码',
+                'action': '「%s」占比已达 %.1f%%%s，主推 %s 扩科；目标占比提升至 20%%，对应增量 ¥%s+'
+                          % (ex['kw'], ex['pct'], grow, top_c, money_short(ex['a'])),
+                'owner': '业务负责人', 'due': '2 周内',
+                'benefit': '按当前扩科客单基线估算可贡献 ¥%s+' % money_short(ex['a']),
+            })
+        # 业务定制 3：复制新校区/新场所
+        new_campuses = _dp.get('campus_new') or []
+        if new_campuses and _dp.get('campus'):
+            for nc in new_campuses:
+                cm = [c for c in _dp['campus'] if c['name'] == nc]
+                if cm:
+                    actions.append({
+                        'title': '复制「%s」模式' % nc,
+                        'action': '「%s」贡献 %d 单 %s（占 %.0f%%），客单 %s；评估其他校区/渠道复制此模式'
+                                  % (nc, 1, money_short(cm[0]['a']), cm[0]['pct'], money_short(cm[0]['a'])),
+                        'owner': '运营负责人', 'due': '1 个月内',
+                        'benefit': '按当前客单基线估算可增量 ¥%s' % money_short(cm[0]['a']),
+                    })
+                    break
+        # 兜底（无定制数据时保留原通用建议）
+        if len(actions) == 1:
+            actions.append({'title': '定位峰值驱动',
+                            'action': '定位峰值月的驱动因素（活动/渠道/大单）',
+                            'owner': '运营负责人', 'due': '2 周内',
+                            'benefit': '锁定增长/下滑主因，聚焦资源投放'})
         decs.append({
             'q': '近期营收%s是否可持续？' % ('增长' if '增长' in trend else ('下滑' if '下滑' in trend else '平稳')),
             'ans': ans,
@@ -563,9 +615,9 @@ def build_deep(rows, dims, months, r):
                     sm['status'] = '无产出'
                 elif a <= 0:
                     sm['status'] = '爆发（新增 %s）' % money_short(b)
-                elif b >= a * 1.5:
+                elif b >= a * 1.4:
                     sm['status'] = '爆发（%s → %s，+%.0f%%）' % (money_short(a), money_short(b), (b - a) / a * 100)
-                elif b <= a * 0.5:
+                elif b <= a * 0.6:
                     sm['status'] = '下滑（%s → %s，-%.0f%%）' % (money_short(a), money_short(b), (a - b) / a * 100)
                 else:
                     sm['status'] = '平稳'
@@ -922,9 +974,9 @@ def render_html(r, title='经营分析报告', theme='apple-glass'):
                         % (conf_badge.get(dc['conf'], dc['conf']), dc.get('reason', '')))
             dsec.append('<p><b>注意事项（什么会改变结论）</b>：</p><ul>%s</ul>'
                         % ''.join('<li>%s</li>' % n for n in dc.get('notes', [])))
-            dsec.append('<table><tr><th>下一步行动</th><th>负责人</th><th>期限</th><th>预期收益</th></tr>%s</table>'
-                        % ''.join('<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>'
-                                  % (a['action'], a['owner'], a['due'], a.get('benefit', '')) for a in dc.get('actions', [])))
+            dsec.append('<table><tr><th>建议</th><th>具体动作</th><th>负责人</th><th>期限</th><th>预期收益</th></tr>%s</table>'
+                        % ''.join('<tr><td><b>%s</b></td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>'
+                                  % (a.get('title', '—'), a['action'], a['owner'], a['due'], a.get('benefit', '')) for a in dc.get('actions', [])))
             dsec.append('</div>')
         sec.insert(0, '\n'.join(dsec))
 
@@ -1096,10 +1148,11 @@ def render_md(r, title='经营分析决策简报'):
             L.append('- %s' % n)
         L.append('')
         L.append('**下一步行动**：')
-        L.append('| 行动 | 负责人 | 期限 | 预期收益 |')
-        L.append('|---|---|---|---|')
+        L.append('| 建议 | 具体动作 | 负责人 | 期限 | 预期收益 |')
+        L.append('|---|---|---|---|---|')
         for a in dc.get('actions', []):
-            L.append('| %s | %s | %s | %s |' % (a['action'], a['owner'], a['due'], a.get('benefit', '')))
+            L.append('| **%s** | %s | %s | %s | %s |' % (
+                a.get('title', '—'), a['action'], a['owner'], a['due'], a.get('benefit', '')))
         L.append('')
     # 深度分析（文字叙述为主、表格为辅）
     _dp = r.get('deep') or {}
