@@ -220,7 +220,8 @@ def build_decisions(r, _dp=None):
         # 业务定制 1：激活下滑签单人
         for sm in (_dp.get('signer_matrix') or []):
             if '下滑' in sm.get('status', '') and sm.get('by_month'):
-                pair = (inc.get('last_full_pair') if inc.get('incomplete_month') else (months[-2] if len(months) >= 2 else None))
+                pair = (inc.get('last_full_pair') if inc.get('incomplete_month')
+                        else ((months[-2], months[-1]) if len(months) >= 2 else None))
                 if not pair:
                     continue
                 a, b = sm['by_month'].get(pair[0], 0), sm['by_month'].get(pair[1], 0)
